@@ -54,22 +54,38 @@ def get_peer_info(node: Node) -> Status:
         
         peer_info_data = peer_info["peer_info"]
         
-        # Extract relevant fields
-        found = peer_info_data.get("found", False)
-        active_appliance = peer_info_data.get("active_appliance", 0)
-        primary_ip = peer_info_data.get("primary_ip", "")
-        secondary_ip = peer_info_data.get("secondary_ip", "")
-        peer_id = peer_info_data.get("id", 0)
+        # API returns peer_info.peer_info.peers as a list, not direct scalar fields.
+        peers = peer_info_data.get("peers", [])
+        if not peers:
+            print("[ERROR] No peers found in peer_info.peer_info.peers", file=sys.stderr)
+            return Status(found=False, active_appliance=0, primary_ip="", secondary_ip="", id=0)
         
-        print(f"✓ Peer info retrieved: found={found}, active_appliance={active_appliance}, id={peer_id}", file=sys.stderr)
+        # Search through the peers list to find a match with the target IP
+        target_ip = node.ip
+        print(f"[DEBUG] Searching for peer matching target IP: {target_ip}", file=sys.stderr)
         
-        return Status(
-            found=found,
-            active_appliance=active_appliance,
-            primary_ip=primary_ip,
-            secondary_ip=secondary_ip,
-            id=peer_id
-        )
+        for peer in peers:
+            primary_ip = peer.get("primary_ip", "")
+            secondary_ip = peer.get("secondary_ip", "")
+            
+            # Check if either primary_ip or secondary_ip matches the target IP
+            if primary_ip == target_ip or secondary_ip == target_ip:
+                active_appliance = peer.get("active_appliance", 0)
+                peer_id = peer.get("id", 0)
+                
+                print(f"✓ Peer match found: primary_ip={primary_ip}, secondary_ip={secondary_ip}, active_appliance={active_appliance}, id={peer_id}", file=sys.stderr)
+                
+                return Status(
+                    found=True,
+                    active_appliance=active_appliance,
+                    primary_ip=primary_ip,
+                    secondary_ip=secondary_ip,
+                    id=peer_id
+                )
+        
+        # No matching peer found
+        print(f"[INFO] No peer found matching target IP: {target_ip}", file=sys.stderr)
+        return Status(found=False, active_appliance=0, primary_ip="", secondary_ip="", id=0)
         
     except json.JSONDecodeError as e:
         print(f"[ERROR] Failed to parse nested clusterInfo JSON: {e}", file=sys.stderr)
