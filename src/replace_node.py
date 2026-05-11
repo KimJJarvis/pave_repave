@@ -198,49 +198,55 @@ def main():
         sys.exit(1)
     print(f"✓ Peer is found", file=sys.stderr)
 
-    # # Step 2: Verify peer active_appliance == 1
-    # print("\n[Step 2] Verify peer active_appliance == 1...", file=sys.stderr)
-    # if peer_status.active_appliance != 1:
-    #     print(
-    #         f"[ERROR] Peer active_appliance is {peer_status.active_appliance}, expected 1",
-    #         file=sys.stderr,
-    #     )
-    #     sys.exit(1)
-    # print(f"✓ Peer active_appliance is 1", file=sys.stderr)
+    # Step 2: Verify peer active_appliance == 1
+    print("\n[Step 2] Verify peer active_appliance == 1...", file=sys.stderr)
+    if peer_status.active_appliance != 1:
+        print(
+            f"[ERROR] Peer active_appliance is {peer_status.active_appliance}, expected 1",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    print(f"✓ Peer active_appliance is 1", file=sys.stderr)
 
-    # # Step 3: Verify peer.id == hsa.id
-    # print("\n[Step 3] Verify peer.id == hsa.id...", file=sys.stderr)
-    # hsa_status = get_peer_info(hsa)
-    # if peer_status.id != hsa_status.id:
-    #     print(
-    #         f"[ERROR] Peer ID ({peer_status.id}) != HSA ID ({hsa_status.id})",
-    #         file=sys.stderr,
-    #     )
-    #     sys.exit(1)
-    # print(f"✓ Peer ID matches HSA ID: {peer_status.id}", file=sys.stderr)
+    # Step 3: Verify peer.id == hsa.id
+    print("\n[Step 3] Verify peer.id == hsa.id...", file=sys.stderr)
+    hsa_status = get_peer_info(hsa)
+    if peer_status.id != hsa_status.id:
+        print(
+            f"[ERROR] Peer ID ({peer_status.id}) != HSA ID ({hsa_status.id})",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    print(f"✓ Peer ID matches HSA ID: {peer_status.id}", file=sys.stderr)
 
-    # # Step 4: Verify spare is not found
-    # print("\n[Step 4] Verify spare is not found...", file=sys.stderr)
-    # spare_status = get_peer_info(spare)
-    # if spare_status.found:
-    #     print(f"[ERROR] Spare is already found in cluster!", file=sys.stderr)
-    #     sys.exit(1)
-    # print(f"✓ Spare is not found (as expected)", file=sys.stderr)
+    # Step 4: Verify spare is not found
+    print("\n[Step 4] Verify spare is not found...", file=sys.stderr)
+    spare_status = get_peer_info(spare)
+    if spare_status.found:
+        print(f"[ERROR] Spare is already found in cluster!", file=sys.stderr)
+        sys.exit(1)
+    print(f"✓ Spare is not found (as expected)", file=sys.stderr)
 
     # Step 5: Set id variable
     print("\n[Step 5] Set id variable...", file=sys.stderr)
     id = peer_status.id
     print(f"✓ ID set to: {id}", file=sys.stderr)
 
-    # # Step 6: Fail over peer
-    # print("\n[Step 6] Fail over peer...", file=sys.stderr)
-    # fail_over(node=peer)
-    # print(f"✓ Fail over completed", file=sys.stderr)
+    # Step 6: Fail over peer
+    print("\n[Step 6] Fail over peer...", file=sys.stderr)
+    response = fail_over(node=peer)
+    if response.code != 200:
+        print(f"[ERROR] Fail over failed: {response.message} (code: {response.code})", file=sys.stderr)
+        sys.exit(1)
+    print(f"✓ Fail over initiated: {response.message}", file=sys.stderr)
 
-    # Step 7: Switch primary/secondary on PeerA
+    # Step 7: Switch primary/secondary on Peer
     print("\n[Step 7] Switch primary/secondary on Peer...", file=sys.stderr)
-    switch_primary_secondary(node=peer, id=id)
-    print(f"✓ Switch primary/secondary completed", file=sys.stderr)
+    response = switch_primary_secondary(node=peer, id=id)
+    if response.code not in [200]:
+        print(f"[ERROR] Switch primary/secondary failed: {response.message} (code: {response.code})", file=sys.stderr)
+        sys.exit(1)
+    print(f"✓ Switch primary/secondary completed: {response.message}", file=sys.stderr)
 
     # Step 8: Get integration token from HSA
     print("\n[Step 8] Get integration token from HSA...", file=sys.stderr)
@@ -280,13 +286,19 @@ def main():
 
     # Step 12: Fail over HSA
     print("\n[Step 12] Fail over HSA...", file=sys.stderr)
-    fail_over(node=hsa)
-    print(f"✓ HSA fail over completed", file=sys.stderr)
+    response = fail_over(node=hsa)
+    if response.code != 200:
+        print(f"[ERROR] HSA fail over failed: {response.message} (code: {response.code})", file=sys.stderr)
+        sys.exit(1)
+    print(f"✓ HSA fail over initiated: {response.message}", file=sys.stderr)
 
-    # Step 13: Switch primary/secondary on HSA
-    print("\n[Step 13] Switch primary/secondary on hsa...", file=sys.stderr)
-    switch_primary_secondary(node=spare, id=id)
-    print(f"✓ Switch primary/secondary on spare completed", file=sys.stderr)
+    # Step 13: Switch primary/secondary on spare
+    print("\n[Step 13] Switch primary/secondary on spare...", file=sys.stderr)
+    response = switch_primary_secondary(node=spare, id=id)
+    if response.code not in [200]:
+        print(f"[ERROR] Switch primary/secondary failed: {response.message} (code: {response.code})", file=sys.stderr)
+        sys.exit(1)
+    print(f"✓ Switch primary/secondary on spare completed: {response.message}", file=sys.stderr)
 
     # Step 14: Verify spare is found
     print("\n[Step 14] Verify spare is found...", file=sys.stderr)

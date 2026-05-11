@@ -9,7 +9,7 @@ import sys
 import json
 
 from node import Node
-from make_api_request import make_api_request
+from make_single_api_request import make_single_api_request
 
 
 def get_integration_token(node: Node) -> str:
@@ -26,7 +26,7 @@ def get_integration_token(node: Node) -> str:
     url = f"{base_url}/api/v3/cluster-orchestrator/integration-token"
     print(f"Getting integration token from {url}...", file=sys.stderr)
     
-    response = make_api_request(url, node.token, method="GET")
+    response = make_single_api_request(url, node.token, method="GET")
     
     if "token" not in response:
         print(f"Error: 'token' field not found in response: {response}", file=sys.stderr)

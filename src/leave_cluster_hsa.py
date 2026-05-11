@@ -9,7 +9,7 @@ import sys
 import json
 
 from node import Node
-from make_api_request import make_api_request
+from make_single_api_request import make_single_api_request
 
 
 def leave_cluster_hsa(node: Node, integration_token: str) -> None:
@@ -23,10 +23,9 @@ def leave_cluster_hsa(node: Node, integration_token: str) -> None:
     base_url = f"https://localhost:{node.port}"
     url = f"{base_url}/api/v3/cluster-orchestrator/leave-cluster-hsa"
     print(f"Calling leave-cluster-hsa on {url}...", file=sys.stderr)
-
     data = {"force": True, "ip": node.ip, "token": integration_token}
 
-    response = make_api_request(url, node.token, method="POST", data=data)
+    response = make_single_api_request(url, node.token, method="POST", data=data)
     print(
         f"✓ leave-cluster-hsa completed: {response.get('status', 'unknown')}",
         file=sys.stderr,

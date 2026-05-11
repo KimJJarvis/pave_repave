@@ -9,7 +9,7 @@ import sys
 import json
 
 from node import Node
-from make_api_request import make_api_request
+from make_single_api_request import make_single_api_request
 
 
 def become_hsa(node: Node, ip_cluster: str, integration_token: str) -> None:
@@ -31,7 +31,7 @@ def become_hsa(node: Node, ip_cluster: str, integration_token: str) -> None:
         "token": integration_token
     }
     
-    response = make_api_request(url, node.token, method="POST", data=data)
+    response = make_single_api_request(url, node.token, method="POST", data=data)
     print(f"✓ become-hsa completed: {response.get('status', 'unknown')}", file=sys.stderr)
 
 
