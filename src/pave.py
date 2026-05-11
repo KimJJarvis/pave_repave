@@ -191,14 +191,20 @@ def main():
     print("\n[STEP 5] Calling switch_primary_secondary on peer...", file=sys.stderr)
     
     while True:
-        switch_response = switch_primary_secondary(peer_node, peer_id)
+        switch_response = switch_primary_secondary(peer_node, peer_id)        
         
-        # Check for LeaderFollower Job Active first (before checking code 400)
+        # Check for LeaderFollower Job Active 
         if "LeaderFollower Job Active, cannot switch-primary-secondary" in switch_response.message:
             print("⚠ LeaderFollower Job Active, waiting 30 seconds before retry...", file=sys.stderr)
             time.sleep(30)
             continue
-        
+
+        # Check for fail over not yet complete 
+        if "A secondary-leader appliance was not found on this peer" in switch_response.message:
+            print("⚠ Fail over not yet complete, waiting 30 seconds before retry...", file=sys.stderr)
+            time.sleep(30)
+            continue
+
         # Now check for other 400 errors
         if switch_response.code == 400:
             exit_with_error(f"switch_primary_secondary returned 400: {switch_response.message}")

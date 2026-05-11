@@ -12,7 +12,7 @@ from node import Node
 from make_single_api_request import make_single_api_request
 
 
-def become_hsa(node: Node, ip_cluster: str, integration_token: str) -> None:
+def become_hsa(node: Node, ip_cluster: str, integration_token: str) -> dict:
     """
     Call the become-hsa endpoint.
     
@@ -20,6 +20,9 @@ def become_hsa(node: Node, ip_cluster: str, integration_token: str) -> None:
         node: Node object with connection details
         ip_cluster: Cluster IP address (primary IP)
         integration_token: Integration token
+        
+    Returns:
+        Response dictionary from the API
     """
     base_url = f"https://localhost:{node.port}"
     url = f"{base_url}/api/v3/cluster-orchestrator/become-hsa"
@@ -33,6 +36,7 @@ def become_hsa(node: Node, ip_cluster: str, integration_token: str) -> None:
     
     response = make_single_api_request(url, node.token, method="POST", data=data)
     print(f"✓ become-hsa completed: {response.get('status', 'unknown')}", file=sys.stderr)
+    return response
 
 
 def main():
