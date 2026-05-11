@@ -311,101 +311,101 @@ def main():
     print(f"HSA Node: https://localhost:{hsa_node.port} (forwarded to {hsa_node.ip})", file=sys.stderr)
     print("=" * 60, file=sys.stderr)
     
-    # # Step 1: Verify peer information on the peer
-    # print("\n[STEP 1] Verifying peer information on peer...", file=sys.stderr)
-    # verify_peer_on_peer(peer_node, args.ip_peer, args.ip_hsa)
-    # print("✓ Step 1 completed successfully", file=sys.stderr)
+    # Step 1: Verify peer information on the peer
+    print("\n[STEP 1] Verifying peer information on peer...", file=sys.stderr)
+    verify_peer_on_peer(peer_node, args.ip_peer, args.ip_hsa)
+    print("✓ Step 1 completed successfully", file=sys.stderr)
     
-    # # Step 2: Verify peer information on the HSA
-    # print("\n[STEP 2] Verifying peer information on HSA...", file=sys.stderr)
-    # verify_peer_on_hsa(hsa_node, args.ip_peer, args.ip_hsa)
-    # print("✓ Step 2 completed successfully", file=sys.stderr)
+    # Step 2: Verify peer information on the HSA
+    print("\n[STEP 2] Verifying peer information on HSA...", file=sys.stderr)
+    verify_peer_on_hsa(hsa_node, args.ip_peer, args.ip_hsa)
+    print("✓ Step 2 completed successfully", file=sys.stderr)
     
-    # # Step 3: Get integration token from the peer
-    # print("\n[STEP 3] Getting integration token from peer...", file=sys.stderr)
-    # integration_token: str = ""
-    # try:
-    #     integration_token = get_integration_token(peer_node)
-    #     print(f"✓ Integration token obtained (length: {len(integration_token)})", file=sys.stderr)
-    #     print("✓ Step 3 completed successfully", file=sys.stderr)
-    # except SystemExit:
-    #     exit_with_error("Failed to get integration token from peer")
-    # except Exception as e:
-    #     # Check if the response contains HTTP 400 error
-    #     if hasattr(e, 'args') and len(e.args) > 0:
-    #         error_msg = str(e.args[0])
-    #         if '400' in error_msg or 'HTTP' in error_msg:
-    #             exit_with_error(f"get_integration_token returned 400 error: {error_msg}")
-    #     exit_with_error(f"get_integration_token failed: {str(e)}")
+    # Step 3: Get integration token from the peer
+    print("\n[STEP 3] Getting integration token from peer...", file=sys.stderr)
+    integration_token: str = ""
+    try:
+        integration_token = get_integration_token(peer_node)
+        print(f"✓ Integration token obtained (length: {len(integration_token)})", file=sys.stderr)
+        print("✓ Step 3 completed successfully", file=sys.stderr)
+    except SystemExit:
+        exit_with_error("Failed to get integration token from peer")
+    except Exception as e:
+        # Check if the response contains HTTP 400 error
+        if hasattr(e, 'args') and len(e.args) > 0:
+            error_msg = str(e.args[0])
+            if '400' in error_msg or 'HTTP' in error_msg:
+                exit_with_error(f"get_integration_token returned 400 error: {error_msg}")
+        exit_with_error(f"get_integration_token failed: {str(e)}")
     
-    # # Step 4: Call become_hsa on the HSA
-    # print("\n[STEP 4] Calling become_hsa on HSA...", file=sys.stderr)
-    # try:
-    #     response = become_hsa(hsa_node, args.ip_peer, integration_token)
+    # Step 4: Call become_hsa on the HSA
+    print("\n[STEP 4] Calling become_hsa on HSA...", file=sys.stderr)
+    try:
+        response = become_hsa(hsa_node, args.ip_peer, integration_token)
         
-    #     # Check for HTTP status code 200
-    #     http_status = response.get('_http_status_code', 200)  # Default to 200 if not present
-    #     if http_status == 400:
-    #         exit_with_error(f"become_hsa returned HTTP 400: {response}")
+        # Check for HTTP status code 200
+        http_status = response.get('_http_status_code', 200)  # Default to 200 if not present
+        if http_status == 400:
+            exit_with_error(f"become_hsa returned HTTP 400: {response}")
         
-    #     if http_status != 200:
-    #         exit_with_error(f"become_hsa returned unexpected HTTP status {http_status}: {response}")
+        if http_status != 200:
+            exit_with_error(f"become_hsa returned unexpected HTTP status {http_status}: {response}")
         
-    #     # Check for success message
-    #     status_msg = response.get('status', '')
-    #     if "HSA add successfully initiated" not in status_msg:
-    #         exit_with_error(f"become_hsa did not return expected success message. Got: {status_msg}")
+        # Check for success message
+        status_msg = response.get('status', '')
+        if "HSA add successfully initiated" not in status_msg:
+            exit_with_error(f"become_hsa did not return expected success message. Got: {status_msg}")
         
-    #     print(f"✓ become_hsa completed successfully: {status_msg}", file=sys.stderr)
-    #     print("✓ Step 4 completed successfully", file=sys.stderr)
-    # except SystemExit:
-    #     raise  # Re-raise SystemExit to preserve exit_with_error behavior
-    # except Exception as e:
-    #     exit_with_error(f"become_hsa failed: {str(e)}")
+        print(f"✓ become_hsa completed successfully: {status_msg}", file=sys.stderr)
+        print("✓ Step 4 completed successfully", file=sys.stderr)
+    except SystemExit:
+        raise  # Re-raise SystemExit to preserve exit_with_error behavior
+    except Exception as e:
+        exit_with_error(f"become_hsa failed: {str(e)}")
     
-    # # Step 5: Verify peer information after join (with retry loop)
-    # print("\n[STEP 5] Verifying peer information after join...", file=sys.stderr)
-    # max_retries = 10  # Maximum number of retries
-    # retry_count = 0
+    # Step 5: Verify peer information after join (with retry loop)
+    print("\n[STEP 5] Verifying peer information after join...", file=sys.stderr)
+    max_retries = 10  # Maximum number of retries
+    retry_count = 0
     
-    # while retry_count < max_retries:
-    #     if retry_count > 0:
-    #         print(f"\n[STEP 5] Retry attempt {retry_count}/{max_retries}...", file=sys.stderr)
+    while retry_count < max_retries:
+        if retry_count > 0:
+            print(f"\n[STEP 5] Retry attempt {retry_count}/{max_retries}...", file=sys.stderr)
         
-    #     # Verify on peer
-    #     peer_verified = verify_peer_after_join(peer_node, args.ip_peer, args.ip_hsa, "PEER")
+        # Verify on peer
+        peer_verified = verify_peer_after_join(peer_node, args.ip_peer, args.ip_hsa, "PEER")
         
-    #     # Verify on HSA
-    #     hsa_verified = verify_peer_after_join(hsa_node, args.ip_peer, args.ip_hsa, "HSA")
+        # Verify on HSA
+        hsa_verified = verify_peer_after_join(hsa_node, args.ip_peer, args.ip_hsa, "HSA")
         
-    #     # Check if both verifications succeeded
-    #     if peer_verified and hsa_verified:
-    #         print("\n✓ Step 5 completed successfully - peer information verified on both nodes", file=sys.stderr)
-    #         break
+        # Check if both verifications succeeded
+        if peer_verified and hsa_verified:
+            print("\n✓ Step 5 completed successfully - peer information verified on both nodes", file=sys.stderr)
+            break
         
-    #     # If not successful, wait and retry
-    #     retry_count += 1
-    #     if retry_count < max_retries:
-    #         print(f"\n⚠ Verification incomplete, waiting 30 seconds before retry...", file=sys.stderr)
-    #         time.sleep(30)
-    #     else:
-    #         exit_with_error("Step 5 failed: Peer information verification did not succeed after maximum retries")
+        # If not successful, wait and retry
+        retry_count += 1
+        if retry_count < max_retries:
+            print(f"\n⚠ Verification incomplete, waiting 30 seconds before retry...", file=sys.stderr)
+            time.sleep(30)
+        else:
+            exit_with_error("Step 5 failed: Peer information verification did not succeed after maximum retries")
     
-    # # Step 6: Call fail_over() on the peer
-    # print("\n[STEP 6] Calling fail_over on peer...", file=sys.stderr)
-    # fail_over_response = fail_over(peer_node)
+    # Step 6: Call fail_over() on the peer
+    print("\n[STEP 6] Calling fail_over on peer...", file=sys.stderr)
+    fail_over_response = fail_over(peer_node)
     
-    # if fail_over_response.code == 400:
-    #     exit_with_error(f"fail_over returned 400: {fail_over_response.message}")
+    if fail_over_response.code == 400:
+        exit_with_error(f"fail_over returned 400: {fail_over_response.message}")
     
-    # if "LeaderFollower Job Active, cannot Fail-Over" in fail_over_response.message:
-    #     exit_with_error(f"fail_over error: {fail_over_response.message}")
+    if "LeaderFollower Job Active, cannot Fail-Over" in fail_over_response.message:
+        exit_with_error(f"fail_over error: {fail_over_response.message}")
     
-    # if "Failover successfully started" not in fail_over_response.message:
-    #     exit_with_error(f"Unexpected fail_over response: {fail_over_response.message}")
+    if "Failover successfully started" not in fail_over_response.message:
+        exit_with_error(f"Unexpected fail_over response: {fail_over_response.message}")
     
-    # print("✓ fail_over completed successfully", file=sys.stderr)
-    # print("✓ Step 6 completed successfully", file=sys.stderr)
+    print("✓ fail_over completed successfully", file=sys.stderr)
+    print("✓ Step 6 completed successfully", file=sys.stderr)
     
     # Step 7: Get peer info to obtain peer ID
     print("\n[STEP 7] Getting peer info to obtain peer ID...", file=sys.stderr)
