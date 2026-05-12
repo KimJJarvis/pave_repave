@@ -10,7 +10,7 @@ import json
 
 from node import Node
 from status import Status
-from make_api_request import make_api_request
+from make_single_api_request import make_single_api_request
 
 
 def peer_info(node: Node) -> tuple[Status, dict]:
@@ -29,7 +29,7 @@ def peer_info(node: Node) -> tuple[Status, dict]:
     print(f"Querying peers from {base_url}...", file=sys.stderr)
     
     # Make the API request (GET method)
-    response = make_api_request(url, node.token, method="GET")
+    response = make_single_api_request(url, node.token, method="GET")
     
     # Extract peer information
     try:
