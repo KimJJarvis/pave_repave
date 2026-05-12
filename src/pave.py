@@ -12,8 +12,7 @@ from node import Node
 from fail_over import fail_over
 from switch_primary_secondary import switch_primary_secondary
 from get_integration_token import get_integration_token
-from get_peer_info import get_peer_info
-from peer_info import get_peer_info as get_peer_info_v3
+from peer_info import peer_info
 from leave_cluster_hsa import leave_cluster_hsa
 from utilities import (
     validate_ip_address,
@@ -35,10 +34,10 @@ def verify_peer_info(node: Node, node_ip: str, hsa_ip: str, node_name: str):
     """
     print(f"\n[{node_name}] Verifying peer information...", file=sys.stderr)
     
-    # Call get_peer_info with node_ip
+    # Call peer_info with node_ip
     print(f"[{node_name}] Checking node IP {node_ip}...", file=sys.stderr)
     node_check = Node(port=node.port, token=node.token, ip=node_ip)
-    node_status, _ = get_peer_info_v3(node_check)
+    node_status, _ = peer_info(node_check)
     
     if not node_status.found:
         exit_with_error(f"[{node_name}] Node {node_ip} not found in peer info")
@@ -48,10 +47,10 @@ def verify_peer_info(node: Node, node_ip: str, hsa_ip: str, node_name: str):
     
     print(f"✓ [{node_name}] Node {node_ip} verified as primaryIp", file=sys.stderr)
     
-    # Call get_peer_info with hsa_ip
+    # Call peer_info with hsa_ip
     print(f"[{node_name}] Checking HSA IP {hsa_ip}...", file=sys.stderr)
     hsa_check = Node(port=node.port, token=node.token, ip=hsa_ip)
-    hsa_status, _ = get_peer_info_v3(hsa_check)
+    hsa_status, _ = peer_info(hsa_check)
     
     if not hsa_status.found:
         exit_with_error(f"[{node_name}] HSA {hsa_ip} not found in peer info")
@@ -179,7 +178,7 @@ def main():
     
     # Step 4: Get peer info to obtain peer ID
     print("\n[STEP 4] Getting peer info to obtain peer ID...", file=sys.stderr)
-    peer_status = get_peer_info(peer_node)
+    peer_status, _ = peer_info(peer_node)
     
     if not peer_status.found:
         exit_with_error("Could not find peer information")

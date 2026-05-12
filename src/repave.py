@@ -10,8 +10,7 @@ import sys
 import time
 
 from node import Node
-from peer_info import get_peer_info as get_peer_info_v3
-from get_peer_info import get_peer_info
+from peer_info import peer_info
 from get_integration_token import get_integration_token
 from become_hsa import become_hsa
 from fail_over import fail_over
@@ -41,10 +40,10 @@ def verify_peer_on_peer(peer_node: Node, node_ip: str, hsa_ip: str):
     """
     print(f"\n[PEER] Verifying peer information...", file=sys.stderr)
     
-    # Call get_peer_info with node_ip on the peer
+    # Call peer_info with node_ip on the peer
     print(f"[PEER] Checking node IP {node_ip}...", file=sys.stderr)
     node_check = Node(port=peer_node.port, token=peer_node.token, ip=node_ip)
-    node_status, node_response = get_peer_info_v3(node_check)
+    node_status, node_response = peer_info(node_check)
     
     if not node_status.found:
         exit_with_error(f"[PEER] Node {node_ip} not found in peer info")
@@ -54,10 +53,10 @@ def verify_peer_on_peer(peer_node: Node, node_ip: str, hsa_ip: str):
     
     print(f"✓ [PEER] Node {node_ip} verified as primaryIp", file=sys.stderr)
     
-    # Call get_peer_info with hsa_ip on the peer
+    # Call peer_info with hsa_ip on the peer
     print(f"[PEER] Checking HSA IP {hsa_ip}...", file=sys.stderr)
     hsa_check = Node(port=peer_node.port, token=peer_node.token, ip=hsa_ip)
-    hsa_status, hsa_response = get_peer_info_v3(hsa_check)
+    hsa_status, hsa_response = peer_info(hsa_check)
     
     if hsa_status.found:
         exit_with_error(f"[PEER] HSA {hsa_ip} should not be found in peer info (but was found)")
@@ -96,20 +95,20 @@ def verify_peer_on_hsa(hsa_node: Node, node_ip: str, hsa_ip: str):
     """
     print(f"\n[HSA] Verifying peer information...", file=sys.stderr)
     
-    # Call get_peer_info with node_ip on the HSA
+    # Call peer_info with node_ip on the HSA
     print(f"[HSA] Checking node IP {node_ip}...", file=sys.stderr)
     node_check = Node(port=hsa_node.port, token=hsa_node.token, ip=node_ip)
-    node_status, node_response = get_peer_info_v3(node_check)
+    node_status, node_response = peer_info(node_check)
     
     if node_status.found:
         exit_with_error(f"[HSA] Node {node_ip} should not be found in peer info (but was found)")
     
     print(f"✓ [HSA] Node {node_ip} verified as not found", file=sys.stderr)
     
-    # Call get_peer_info with hsa_ip on the HSA
+    # Call peer_info with hsa_ip on the HSA
     print(f"[HSA] Checking HSA IP {hsa_ip}...", file=sys.stderr)
     hsa_check = Node(port=hsa_node.port, token=hsa_node.token, ip=hsa_ip)
-    hsa_status, hsa_response = get_peer_info_v3(hsa_check)
+    hsa_status, hsa_response = peer_info(hsa_check)
     
     if hsa_status.found:
         exit_with_error(f"[HSA] HSA {hsa_ip} should not be found in peer info (but was found)")
@@ -120,7 +119,7 @@ def verify_peer_on_hsa(hsa_node: Node, node_ip: str, hsa_ip: str):
     # Query with 127.0.0.1 to get the HSA's own peer info
     print(f"[HSA] Checking HSA's own peer info (127.0.0.1)...", file=sys.stderr)
     localhost_check = Node(port=hsa_node.port, token=hsa_node.token, ip="127.0.0.1")
-    localhost_status, localhost_response = get_peer_info_v3(localhost_check)
+    localhost_status, localhost_response = peer_info(localhost_check)
     
     if not localhost_status.found:
         exit_with_error(f"[HSA] HSA's own peer info (127.0.0.1) not found")
@@ -165,10 +164,10 @@ def verify_peer_after_join(peer_node: Node, node_ip: str, hsa_ip: str, node_name
     """
     print(f"\n[{node_name}] Verifying peer information after join...", file=sys.stderr)
     
-    # Call get_peer_info with node_ip
+    # Call peer_info with node_ip
     print(f"[{node_name}] Checking node IP {node_ip}...", file=sys.stderr)
     node_check = Node(port=peer_node.port, token=peer_node.token, ip=node_ip)
-    node_status, node_response = get_peer_info_v3(node_check)
+    node_status, node_response = peer_info(node_check)
     
     if not node_status.found:
         print(f"✗ [{node_name}] Node {node_ip} not found in peer info", file=sys.stderr)
@@ -180,10 +179,10 @@ def verify_peer_after_join(peer_node: Node, node_ip: str, hsa_ip: str, node_name
     
     print(f"✓ [{node_name}] Node {node_ip} verified as primaryIp", file=sys.stderr)
     
-    # Call get_peer_info with hsa_ip
+    # Call peer_info with hsa_ip
     print(f"[{node_name}] Checking HSA IP {hsa_ip}...", file=sys.stderr)
     hsa_check = Node(port=peer_node.port, token=peer_node.token, ip=hsa_ip)
-    hsa_status, hsa_response = get_peer_info_v3(hsa_check)
+    hsa_status, hsa_response = peer_info(hsa_check)
     
     if not hsa_status.found:
         print(f"✗ [{node_name}] HSA {hsa_ip} not found in peer info", file=sys.stderr)
@@ -409,7 +408,7 @@ def main():
     
     # Step 7: Get peer info to obtain peer ID
     print("\n[STEP 7] Getting peer info to obtain peer ID...", file=sys.stderr)
-    peer_status = get_peer_info(peer_node)
+    peer_status, _ = peer_info(peer_node)
     
     if not peer_status.found:
         exit_with_error("Could not find peer information")

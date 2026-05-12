@@ -13,7 +13,7 @@ from status import Status
 from make_api_request import make_api_request
 
 
-def get_peer_info(node: Node) -> tuple[Status, dict]:
+def peer_info(node: Node) -> tuple[Status, dict]:
     """
     Get peer information from the NMS API v3/peers endpoint.
     
@@ -123,7 +123,7 @@ def main():
     print("=" * 60, file=sys.stderr)
     
     # Get peer info
-    status, full_response = get_peer_info(node)
+    status, full_response = peer_info(node)
     
     print("\n" + "=" * 60, file=sys.stderr)
     print("✓ Query completed successfully!", file=sys.stderr)
