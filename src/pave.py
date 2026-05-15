@@ -14,55 +14,13 @@ from switch_primary_secondary import switch_primary_secondary
 from get_integration_token import get_integration_token
 from peer_info import peer_info
 from leave_cluster_hsa import leave_cluster_hsa
+from get_state import verify_state, wait_state
 from utilities import (
     validate_ip_address,
     validate_port,
     validate_token_length,
     exit_with_error
 )
-
-
-def verify_peer_info(node: Node, node_ip: str, hsa_ip: str, node_name: str):
-    """
-    Verify peer information on a node.
-    
-    Args:
-        node: Node object to query
-        node_ip: Expected primary IP address
-        hsa_ip: Expected secondary IP address
-        node_name: Name of the node being verified (for logging)
-    """
-    print(f"\n[{node_name}] Verifying peer information...", file=sys.stderr)
-    
-    # Call peer_info with node_ip
-    print(f"[{node_name}] Checking node IP {node_ip}...", file=sys.stderr)
-    node_check = Node(port=node.port, token=node.token, ip=node_ip)
-    node_status, _ = peer_info(node_check)
-    
-    if not node_status.found:
-        exit_with_error(f"[{node_name}] Node {node_ip} not found in peer info")
-    
-    if node_status.primary_ip != node_ip:
-        exit_with_error(f"[{node_name}] Node IP {node_ip} is not a primaryIp (found: {node_status.primary_ip})")
-    
-    print(f"✓ [{node_name}] Node {node_ip} verified as primaryIp", file=sys.stderr)
-    
-    # Call peer_info with hsa_ip
-    print(f"[{node_name}] Checking HSA IP {hsa_ip}...", file=sys.stderr)
-    hsa_check = Node(port=node.port, token=node.token, ip=hsa_ip)
-    hsa_status, _ = peer_info(hsa_check)
-    
-    if not hsa_status.found:
-        exit_with_error(f"[{node_name}] HSA {hsa_ip} not found in peer info")
-    
-    if hsa_status.secondary_ip != hsa_ip:
-        exit_with_error(f"[{node_name}] HSA IP {hsa_ip} is not a secondaryIp (found: {hsa_status.secondary_ip})")
-    
-    if hsa_status.active_appliance != 1:  # 1 = PRIMARY
-        exit_with_error(f"[{node_name}] activeAppliance is not PRIMARY (found: {hsa_status.active_appliance})")
-    
-    print(f"✓ [{node_name}] HSA {hsa_ip} verified as secondaryIp with activeAppliance=PRIMARY", file=sys.stderr)
-    print(f"✓ [{node_name}] Peer information verification complete", file=sys.stderr)
 
 
 def main():
@@ -151,15 +109,12 @@ def main():
     print(f"HSA Node: https://localhost:{hsa_node.port} (forwarded to {hsa_node.ip})", file=sys.stderr)
     print("=" * 60, file=sys.stderr)
     
-    # Step 1: Verify peer information on the peer
-    print("\n[STEP 1] Verifying peer information on peer...", file=sys.stderr)
-    verify_peer_info(peer_node, args.ip_peer, args.ip_hsa, "PEER")
-    print("✓ Step 1 completed successfully", file=sys.stderr)
-    
-    # Step 2: Verify peer information on the HSA
-    print("\n[STEP 2] Verifying peer information on HSA...", file=sys.stderr)
-    verify_peer_info(hsa_node, args.ip_peer, args.ip_hsa, "HSA")
-    print("✓ Step 2 completed successfully", file=sys.stderr)
+    # Step 1,2: Verify system is in state 1
+    print("\n[STEP 3] Verifying system is in state 1...", file=sys.stderr)
+    if not verify_state(1, peer_node, hsa_node):
+        exit_with_error("System is not in state 1 (peer primary, hsa secondary, activeAppliance=PRIMARY)")
+    print("✓ System verified to be in state 1", file=sys.stderr)
+    print("✓ Step 3 completed successfully", file=sys.stderr)
     
     # Step 3: Call fail_over() on the peer
     print("\n[STEP 3] Calling fail_over on peer...", file=sys.stderr)
@@ -176,7 +131,12 @@ def main():
     
     print("✓ fail_over completed successfully", file=sys.stderr)
     
-    # Step 4: Get peer info to obtain peer ID
+    # Wait for system to reach state 2
+    print("\n[STEP 4] Waiting for system to reach state 2...", file=sys.stderr)
+    wait_state(2, peer_node, hsa_node)
+    print("✓ Step 4 completed successfully", file=sys.stderr)
+
+    # Step 5: Get peer info to obtain peer ID
     print("\n[STEP 4] Getting peer info to obtain peer ID...", file=sys.stderr)
     peer_status, _ = peer_info(peer_node)
     
@@ -215,7 +175,12 @@ def main():
         
         # Any other response is an error
         exit_with_error(f"Unexpected switch_primary_secondary response: {switch_response.message}")
-    
+
+    # Wait for system to reach state 3
+    print("\n[STEP 4] Waiting for system to reach state 3...", file=sys.stderr)
+    wait_state(3, peer_node, hsa_node)
+    print("✓ Step 5.1 completed successfully", file=sys.stderr)
+
     # Step 6: Get integration token from the peer
     print("\n[STEP 6] Getting integration token from peer...", file=sys.stderr)
     integration_token = get_integration_token(hsa_node)
@@ -230,8 +195,13 @@ def main():
     except Exception as e:
         exit_with_error(f"leave_cluster_hsa failed: {str(e)}")
     
+    # Wait for system to reach state 4
+    print("\n[STEP 4] Waiting for system to reach state 4...", file=sys.stderr)
+    wait_state(4, peer_node, hsa_node)
+    print("✓ Step 6.1 completed successfully", file=sys.stderr)
+
     print("\n" + "=" * 60, file=sys.stderr)
-    print("✓ Fused workflow completed successfully!", file=sys.stderr)
+    print("✓ Pave workflow completed successfully!", file=sys.stderr)
     print("=" * 60, file=sys.stderr)
 
 
