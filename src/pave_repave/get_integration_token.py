@@ -30,7 +30,7 @@ def get_integration_token(node: Node) -> str:
     url = f"{base_url}/api/v3/cluster-orchestrator/integration-token"
     logger.info(f"Getting integration token from {url}...")
 
-    response = make_single_api_request(url, node.token, method="GET")
+    response = make_single_api_request(url=url, bearer_token=node.token, method="GET")
 
     if "token" not in response:
         logger.error(f"'token' field not found in response: {response}")
@@ -84,7 +84,7 @@ def main():
 
     # Get integration token
     logger.info("Getting integration token...")
-    integration_token = get_integration_token(node)
+    integration_token = get_integration_token(node=node)
 
     logger.info("=" * 60)
     logger.info("✓ Operation completed successfully!")

@@ -16,21 +16,39 @@ from pave_repave.utilities import setup_logging
 logger = logging.getLogger(__name__)
 
 
-def leave_cluster_hsa(node: Node, integration_token: str) -> None:
+def leave_cluster_hsa(node: Node, integration_token: str) -> dict:
     """
     Call the leave-cluster-hsa endpoint.
 
     Args:
         node: Node object with connection details
         integration_token: Integration token
+    
+    Returns:
+        Response dictionary from the API
+    
+    Raises:
+        SystemExit: If the API returns HTTP 400 or other error status
     """
     base_url = f"https://localhost:{node.port}"
     url = f"{base_url}/api/v3/cluster-orchestrator/leave-cluster-hsa"
     logger.info(f"Calling leave-cluster-hsa on {url}...")
     data = {"force": True, "ip": node.ip, "token": integration_token}
 
-    response = make_single_api_request(url, node.token, method="POST", data=data)
+    response = make_single_api_request(url=url, bearer_token=node.token, method="POST", data=data)
+    
+    # Check for HTTP error status codes
+    if "_http_status_code" in response:
+        status_code = response["_http_status_code"]
+        if status_code == 400:
+            logger.error(f"HTTP 400 Bad Request: {response.get('error', 'Unknown error')}")
+            sys.exit(1)
+        elif status_code >= 400:
+            logger.error(f"HTTP {status_code} Error: {response.get('error', 'Unknown error')}")
+            sys.exit(1)
+    
     logger.info(f"✓ leave-cluster-hsa completed: {response.get('status', 'unknown')}")
+    return response
 
 
 def main():
@@ -78,8 +96,13 @@ def main():
 
     # Call leave-cluster-hsa
     logger.info("Calling leave-cluster-hsa...")
-    leave_cluster_hsa(node, args.integration_token)
+    response = leave_cluster_hsa(node=node, integration_token=args.integration_token)
+
+    # Log the response as an info message
+    logger.info("\nResponse:")
+    logger.info(json.dumps(response, indent=2))
 
     logger.info("=" * 60)
     logger.info("✓ Operation completed successfully!")
+    print("✓ Operation completed successfully!")
     logger.info("=" * 60)

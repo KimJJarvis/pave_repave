@@ -23,7 +23,7 @@ from pave_repave.utilities import (
 logger = logging.getLogger(__name__)
 
 
-def which_state(peer: Node, hsa: Node) -> int:
+def which_state(peer: Node, other: Node) -> int:
     """
     Determine the current state of the peer/HSA cluster.
 
@@ -37,161 +37,106 @@ def which_state(peer: Node, hsa: Node) -> int:
 
     Args:
         peer: Peer Node object
-        hsa: HSA Node object
+        other: Other Node object
     """
     # Get peer info from peer node
     peer_check_peer = Node(port=peer.port, token=peer.token, ip=peer.ip)
-    peer_status_on_peer, _ = peer_info(peer_check_peer)
+    peer_status_on_peer, _ = peer_info(node=peer_check_peer)
 
-    hsa_check_peer = Node(port=peer.port, token=peer.token, ip=hsa.ip)
-    hsa_status_on_peer, _ = peer_info(hsa_check_peer)
+    other_check_peer = Node(port=peer.port, token=peer.token, ip=other.ip)
+    other_status_on_peer, _ = peer_info(node=other_check_peer)
 
-    # Get peer info from hsa node
-    peer_check_hsa = Node(port=hsa.port, token=hsa.token, ip=peer.ip)
-    peer_status_on_hsa, _ = peer_info(peer_check_hsa)
+    # Get peer info from other node
+    peer_check_other = Node(port=other.port, token=other.token, ip=peer.ip)
+    peer_status_on_other, _ = peer_info(node=peer_check_other)
 
-    hsa_check_hsa = Node(port=hsa.port, token=hsa.token, ip=hsa.ip)
-    hsa_status_on_hsa, _ = peer_info(hsa_check_hsa)
-
-    # Also check localhost on both nodes for state 4
-    localhost_check_peer = Node(port=peer.port, token=peer.token, ip="127.0.0.1")
-    localhost_status_on_peer, _ = peer_info(localhost_check_peer)
-
-    localhost_check_hsa = Node(port=hsa.port, token=hsa.token, ip="127.0.0.1")
-    localhost_status_on_hsa, _ = peer_info(localhost_check_hsa)
+    other_check_other = Node(port=other.port, token=other.token, ip=other.ip)
+    other_status_on_other, _ = peer_info(node=other_check_other)
 
     logger.debug(f"peer_status_on_peer: {peer_status_on_peer}")
-    logger.debug(f"hsa_status_on_peer: {hsa_status_on_peer}")
-    logger.debug(f"hsa_status_on_hsa: {hsa_status_on_hsa}")
-    logger.debug(f"localhost_status_on_peer: {localhost_status_on_peer}")
-    logger.debug(f"localhost_status_on_hsa: {localhost_status_on_hsa}")
-
-    # Check for State 4: Peer standalone, HSA standalone
+    logger.debug(f"other_status_on_peer: {other_status_on_peer}")
+    logger.debug(f"peer_status_on_other: {peer_status_on_other}")
+    logger.debug(f"other_status_on_other: {other_status_on_other}")
+ 
+    # Check for State 4: Peer standalone, Other standalone
     # Both nodes are standalone with 127.0.0.1 as primary, no secondary, activeAppliance=PRIMARY
-    # Neither node knows about the other's external IP (hsa_ip not found on peer, peer_ip not found on hsa)
+    # Neither node knows about the other's external IP (other_ip not found on peer, peer_ip not found on other)
     if (
         peer_status_on_peer.found
         and peer_status_on_peer.primary_ip == peer.ip
         and peer_status_on_peer.secondary_ip == ""
         and peer_status_on_peer.active_appliance == 1
-        and not hsa_status_on_peer.found
-        and not peer_status_on_hsa.found
-        and localhost_status_on_hsa.found
-        and localhost_status_on_hsa.primary_ip == "127.0.0.1"
-        and localhost_status_on_hsa.secondary_ip == ""
-        and localhost_status_on_hsa.active_appliance == 1
+        and not other_status_on_peer.found
+        and not peer_status_on_other.found
     ):
         return 4
 
-    # Print reasons why system is not in state 4
-    reasons = []
-    if not peer_status_on_peer.found:
-        reasons.append(f"peer_status_on_peer.found is False (expected True)")
-    if peer_status_on_peer.found and peer_status_on_peer.primary_ip != peer.ip:
-        reasons.append(
-            f"peer_status_on_peer.primary_ip is '{peer_status_on_peer.primary_ip}' (expected '{peer.ip}')"
-        )
-    if peer_status_on_peer.found and peer_status_on_peer.secondary_ip != "":
-        reasons.append(
-            f"peer_status_on_peer.secondary_ip is '{peer_status_on_peer.secondary_ip}' (expected '')"
-        )
-    if peer_status_on_peer.found and peer_status_on_peer.active_appliance != 1:
-        reasons.append(
-            f"peer_status_on_peer.active_appliance is {peer_status_on_peer.active_appliance} (expected 1)"
-        )
-    if hsa_status_on_peer.found:
-        reasons.append(f"hsa_status_on_peer.found is True (expected False)")
-    if peer_status_on_hsa.found:
-        reasons.append(f"peer_status_on_hsa.found is True (expected False)")
-    if not localhost_status_on_hsa.found:
-        reasons.append(f"localhost_status_on_hsa.found is False (expected True)")
-    if (
-        localhost_status_on_hsa.found
-        and localhost_status_on_hsa.primary_ip != "127.0.0.1"
-    ):
-        reasons.append(
-            f"localhost_status_on_hsa.primary_ip is '{localhost_status_on_hsa.primary_ip}' (expected '127.0.0.1')"
-        )
-    if localhost_status_on_hsa.found and localhost_status_on_hsa.secondary_ip != "":
-        reasons.append(
-            f"localhost_status_on_hsa.secondary_ip is '{localhost_status_on_hsa.secondary_ip}' (expected '')"
-        )
-    if localhost_status_on_hsa.found and localhost_status_on_hsa.active_appliance != 1:
-        reasons.append(
-            f"localhost_status_on_hsa.active_appliance is {localhost_status_on_hsa.active_appliance} (expected 1)"
-        )
-
-    if reasons:
-        logger.debug("System is NOT in state 4. Reasons:")
-        for reason in reasons:
-            logger.debug(f"  - {reason}")
-
-    # Check for State 3: peer is secondary, hsa is primary, activeAppliance=PRIMARY on both
-    # Peer: peer_ip is secondary, hsa_ip is primary, activeAppliance=PRIMARY
-    # HSA: peer_ip is secondary, hsa_ip is primary, activeAppliance=PRIMARY
+    # Check for State 3: peer is secondary, other is primary, activeAppliance=PRIMARY on both
+    # Peer: primary_ip is other, secondary_ip is peer, activeAppliance=PRIMARY
+    # Other: primary_ip is other, secondary_ip is peer, activeAppliance=PRIMARY
     if (
         peer_status_on_peer.found
         and peer_status_on_peer.secondary_ip == peer.ip
-        and peer_status_on_peer.primary_ip == hsa.ip
+        and peer_status_on_peer.primary_ip == other.ip
         and peer_status_on_peer.active_appliance == 1
-        and hsa_status_on_peer.found
-        and hsa_status_on_peer.secondary_ip == peer.ip
-        and hsa_status_on_peer.primary_ip == hsa.ip
-        and hsa_status_on_peer.active_appliance == 1
-        and peer_status_on_hsa.found
-        and peer_status_on_hsa.secondary_ip == peer.ip
-        and peer_status_on_hsa.primary_ip == hsa.ip
-        and peer_status_on_hsa.active_appliance == 1
-        and hsa_status_on_hsa.found
-        and hsa_status_on_hsa.secondary_ip == peer.ip
-        and hsa_status_on_hsa.primary_ip == hsa.ip
-        and hsa_status_on_hsa.active_appliance == 1
+        and other_status_on_peer.found
+        and other_status_on_peer.secondary_ip == peer.ip
+        and other_status_on_peer.primary_ip == other.ip
+        and other_status_on_peer.active_appliance == 1
+        and peer_status_on_other.found
+        and peer_status_on_other.secondary_ip == peer.ip
+        and peer_status_on_other.primary_ip == other.ip
+        and peer_status_on_other.active_appliance == 1
+        and other_status_on_other.found
+        and other_status_on_other.secondary_ip == peer.ip
+        and other_status_on_other.primary_ip == other.ip
+        and other_status_on_other.active_appliance == 1
     ):
         return 3
 
-    # Check for State 2: peer is primary, hsa is secondary, activeAppliance=SECONDARY on both
-    # Peer: peer_ip is primary, hsa_ip is secondary, activeAppliance=SECONDARY
-    # HSA: peer_ip is primary, hsa_ip is secondary, activeAppliance=SECONDARY
+    # Check for State 2: peer is primary, other is secondary, activeAppliance=SECONDARY on both
+    # Peer: primary_ip is peer, secondary_ip is other, activeAppliance=SECONDARY
+    # Other: primary_ip is peer, secondary_ip is other, activeAppliance=SECONDARY
     if (
         peer_status_on_peer.found
         and peer_status_on_peer.primary_ip == peer.ip
-        and peer_status_on_peer.secondary_ip == hsa.ip
+        and peer_status_on_peer.secondary_ip == other.ip
         and peer_status_on_peer.active_appliance == 2
-        and hsa_status_on_peer.found
-        and hsa_status_on_peer.primary_ip == peer.ip
-        and hsa_status_on_peer.secondary_ip == hsa.ip
-        and hsa_status_on_peer.active_appliance == 2
-        and peer_status_on_hsa.found
-        and peer_status_on_hsa.primary_ip == peer.ip
-        and peer_status_on_hsa.secondary_ip == hsa.ip
-        and peer_status_on_hsa.active_appliance == 2
-        and hsa_status_on_hsa.found
-        and hsa_status_on_hsa.primary_ip == peer.ip
-        and hsa_status_on_hsa.secondary_ip == hsa.ip
-        and hsa_status_on_hsa.active_appliance == 2
+        and other_status_on_peer.found
+        and other_status_on_peer.primary_ip == peer.ip
+        and other_status_on_peer.secondary_ip == other.ip
+        and other_status_on_peer.active_appliance == 2
+        and peer_status_on_other.found
+        and peer_status_on_other.primary_ip == peer.ip
+        and peer_status_on_other.secondary_ip == other.ip
+        and peer_status_on_other.active_appliance == 2
+        and other_status_on_other.found
+        and other_status_on_other.primary_ip == peer.ip
+        and other_status_on_other.secondary_ip == other.ip
+        and other_status_on_other.active_appliance == 2
     ):
         return 2
 
-    # Check for State 1: peer is primary, hsa is secondary, activeAppliance=PRIMARY on both
-    # Peer: peer_ip is primary, hsa_ip is secondary, activeAppliance=PRIMARY
-    # HSA: peer_ip is primary, hsa_ip is secondary, activeAppliance=PRIMARY
+    # Check for State 1: peer is primary, other is secondary, activeAppliance=PRIMARY on both
+    # Peer: primary_ip is peer, secondary_ip is other, activeAppliance=PRIMARY
+    # Other: primary_ip is peer, secondary_ip is other, activeAppliance=PRIMARY
     if (
         peer_status_on_peer.found
         and peer_status_on_peer.primary_ip == peer.ip
-        and peer_status_on_peer.secondary_ip == hsa.ip
+        and peer_status_on_peer.secondary_ip == other.ip
         and peer_status_on_peer.active_appliance == 1
-        and hsa_status_on_peer.found
-        and hsa_status_on_peer.primary_ip == peer.ip
-        and hsa_status_on_peer.secondary_ip == hsa.ip
-        and hsa_status_on_peer.active_appliance == 1
-        and peer_status_on_hsa.found
-        and peer_status_on_hsa.primary_ip == peer.ip
-        and peer_status_on_hsa.secondary_ip == hsa.ip
-        and peer_status_on_hsa.active_appliance == 1
-        and hsa_status_on_hsa.found
-        and hsa_status_on_hsa.primary_ip == peer.ip
-        and hsa_status_on_hsa.secondary_ip == hsa.ip
-        and hsa_status_on_hsa.active_appliance == 1
+        and other_status_on_peer.found
+        and other_status_on_peer.primary_ip == peer.ip
+        and other_status_on_peer.secondary_ip == other.ip
+        and other_status_on_peer.active_appliance == 1
+        and peer_status_on_other.found
+        and peer_status_on_other.primary_ip == peer.ip
+        and peer_status_on_other.secondary_ip == other.ip
+        and peer_status_on_other.active_appliance == 1
+        and other_status_on_other.found
+        and other_status_on_other.primary_ip == peer.ip
+        and other_status_on_other.secondary_ip == other.ip
+        and other_status_on_other.active_appliance == 1
     ):
         return 1
 
@@ -199,23 +144,23 @@ def which_state(peer: Node, hsa: Node) -> int:
     return 0
 
 
-def verify_state(state: int, peer: Node, hsa: Node) -> bool:
+def verify_state(state: int, peer: Node, other: Node) -> bool:
     """
     Verify that the system is in the specified state.
 
     Args:
         state: Expected state number (0-4)
         peer: Peer Node object
-        hsa: HSA Node object
+        other: Other Node object
 
     Returns:
         True if system is in the specified state, False otherwise
     """
-    current_state = which_state(peer, hsa)
+    current_state = which_state(peer=peer, other=other)
     return current_state == state
 
 
-def wait_state(state: int, peer: Node, hsa: Node) -> None:
+def wait_state(state: int, peer: Node, other: Node) -> None:
     """
     Wait for the system to reach the specified state.
     Calls verify_state() repeatedly until the desired state is reached.
@@ -224,7 +169,7 @@ def wait_state(state: int, peer: Node, hsa: Node) -> None:
     Args:
         state: Desired state number (0-4)
         peer: Peer Node object
-        hsa: HSA Node object
+        other: Other Node object
     """
     max_retries = 10  # Maximum number of retries
     retry_count = 0
@@ -236,20 +181,20 @@ def wait_state(state: int, peer: Node, hsa: Node) -> None:
             logger.info(f"Retry attempt {retry_count}/{max_retries}...")
 
         # Check if we're in the desired state
-        if verify_state(state, peer, hsa):
+        if verify_state(state=state, peer=peer, other=other):
             logger.info(f"✓ State {state} reached successfully")
             return
 
         # If not in desired state, wait and retry
         retry_count += 1
         if retry_count < max_retries:
-            current_state = which_state(peer, hsa)
+            current_state = which_state(peer=peer, other=other)
             logger.warning(
                 f"Current state is {current_state}, not {state}. Waiting 30 seconds before retry..."
             )
             time.sleep(30)
         else:
-            current_state = which_state(peer, hsa)
+            current_state = which_state(peer=peer, other=other)
             exit_with_error(
                 f"wait_state failed: State {state} not reached after maximum retries (current state: {current_state})"
             )
@@ -258,7 +203,7 @@ def wait_state(state: int, peer: Node, hsa: Node) -> None:
 def main():
     """Main entry point for the get_state script."""
     parser = argparse.ArgumentParser(
-        description="Get state of peer and HSA configuration"
+        description="Get state of peer and Other configuration"
     )
     parser.add_argument(
         "--log-level",
@@ -277,11 +222,11 @@ def main():
         "--port_peer", required=True, type=int, help="Port number for peer node"
     )
     parser.add_argument(
-        "--token_hsa", required=True, help="Bearer token for HSA authentication"
+        "--token_other", required=True, help="Bearer token for Other authentication"
     )
-    parser.add_argument("--ip_hsa", required=True, help="IP address of the HSA node")
+    parser.add_argument("--ip_other", required=True, help="IP address of the Other node")
     parser.add_argument(
-        "--port_hsa", required=True, type=int, help="Port number for HSA node"
+        "--port_other", required=True, type=int, help="Port number for Other node"
     )
 
     args = parser.parse_args()
@@ -294,9 +239,9 @@ def main():
     logger.debug(f"  Peer Token: {args.token_peer[:20]}...")
     logger.debug(f"  Peer IP: {args.ip_peer}")
     logger.debug(f"  Peer Port: {args.port_peer}")
-    logger.debug(f"  HSA Token: {args.token_hsa[:20]}...")
-    logger.debug(f"  HSA IP: {args.ip_hsa}")
-    logger.debug(f"  HSA Port: {args.port_hsa}")
+    logger.debug(f"  Other Token: {args.token_other[:20]}...")
+    logger.debug(f"  Other IP: {args.ip_other}")
+    logger.debug(f"  Other Port: {args.port_other}")
 
     # Step 0: Verify parameters (same as repave.py)
     logger.info("[STEP 0] Verifying parameters...")
@@ -305,12 +250,12 @@ def main():
     if not validate_ip_address(args.ip_peer):
         exit_with_error(f"Invalid peer IP address: {args.ip_peer}")
 
-    if not validate_ip_address(args.ip_hsa):
-        exit_with_error(f"Invalid HSA IP address: {args.ip_hsa}")
+    if not validate_ip_address(args.ip_other):
+        exit_with_error(f"Invalid Other IP address: {args.ip_other}")
 
     # Verify IPs are distinct
-    if args.ip_peer == args.ip_hsa:
-        exit_with_error(f"Peer and HSA IP addresses must be distinct: {args.ip_peer}")
+    if args.ip_peer == args.ip_other:
+        exit_with_error(f"Peer and Other IP addresses must be distinct: {args.ip_peer}")
 
     logger.info("✓ IP addresses validated and are distinct")
 
@@ -318,12 +263,12 @@ def main():
     if not validate_port(args.port_peer):
         exit_with_error(f"Invalid peer port number: {args.port_peer} (must be 0-65535)")
 
-    if not validate_port(args.port_hsa):
-        exit_with_error(f"Invalid HSA port number: {args.port_hsa} (must be 0-65535)")
+    if not validate_port(args.port_other):
+        exit_with_error(f"Invalid Other port number: {args.port_other} (must be 0-65535)")
 
     # Verify ports are distinct
-    if args.port_peer == args.port_hsa:
-        exit_with_error(f"Peer and HSA port numbers must be distinct: {args.port_peer}")
+    if args.port_peer == args.port_other:
+        exit_with_error(f"Peer and Other port numbers must be distinct: {args.port_peer}")
 
     logger.info("✓ Port numbers validated and are distinct")
 
@@ -333,9 +278,9 @@ def main():
             f"Invalid peer token length: {len(args.token_peer)} (expected 361)"
         )
 
-    if not validate_token_length(args.token_hsa, 361):
+    if not validate_token_length(args.token_other, 361):
         exit_with_error(
-            f"Invalid HSA token length: {len(args.token_hsa)} (expected 361)"
+            f"Invalid Other token length: {len(args.token_other)} (expected 361)"
         )
 
     logger.info("✓ Token lengths validated (361 characters)")
@@ -343,7 +288,7 @@ def main():
 
     # Construct Node objects
     peer_node = Node(port=args.port_peer, token=args.token_peer, ip=args.ip_peer)
-    hsa_node = Node(port=args.port_hsa, token=args.token_hsa, ip=args.ip_hsa)
+    other_node = Node(port=args.port_other, token=args.token_other, ip=args.ip_other)
 
     logger.info("=" * 60)
     logger.info("Get State")
@@ -352,13 +297,13 @@ def main():
         f"Peer Node: https://localhost:{peer_node.port} (forwarded to {peer_node.ip})"
     )
     logger.info(
-        f"HSA Node: https://localhost:{hsa_node.port} (forwarded to {hsa_node.ip})"
+        f"Other Node: https://localhost:{other_node.port} (forwarded to {other_node.ip})"
     )
     logger.info("=" * 60)
 
     # Determine and print the current state
     logger.info("Determining current state...")
-    current_state = which_state(peer_node, hsa_node)
+    current_state = which_state(peer=peer_node, other=other_node)
 
     logger.info("=" * 60)
     logger.info(f"Current State: {current_state}")

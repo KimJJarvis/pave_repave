@@ -33,7 +33,7 @@ def fail_over(node: Node) -> Response:
 
     data = {"peerIp": node.ip}
 
-    api_response = make_single_api_request(url, node.token, method="POST", data=data)
+    api_response = make_single_api_request(url=url, bearer_token=node.token, method="POST", data=data)
 
     # Get HTTP status code if present (added by make_single_api_request for error responses)
     http_status = api_response.get("_http_status_code", 200)
@@ -112,15 +112,17 @@ def main():
 
     # Call fail-over
     logger.info("Calling fail-over...")
-    response = fail_over(node)
+    response = fail_over(node=node)
+
+    # Log the response as an info message
+    logger.info("\nResponse:")
+    logger.info(json.dumps({"message": response.message, "code": response.code}, indent=2))
 
     logger.info("=" * 60)
     if response.code == 200:
         logger.info("✓ Operation completed successfully!")
+        print("✓ Operation completed successfully!")
     else:
         logger.warning(f"⚠ Operation completed with code {response.code}")
+        print(f"⚠ Operation completed with code {response.code}")
     logger.info("=" * 60)
-
-    # Output the response to stdout
-    print("\nResponse:")
-    print(json.dumps({"message": response.message, "code": response.code}, indent=2))

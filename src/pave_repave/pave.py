@@ -114,14 +114,14 @@ def main():
     logger.info("=" * 60)
 
     logger.info("Verifying system is in state 1...")
-    if not verify_state(1, peer_node, hsa_node):
+    if not verify_state(state=1, peer=peer_node, other=hsa_node):
         exit_with_error(
             "System is not in state 1 (peer primary, hsa secondary, activeAppliance=PRIMARY)"
         )
     logger.info("✓ System verified to be in state 1")
 
     logger.info("Calling fail_over on peer...")
-    fail_over_response = fail_over(peer_node)
+    fail_over_response = fail_over(node=peer_node)
 
     if fail_over_response.code == 400:
         exit_with_error(f"fail_over returned 400: {fail_over_response.message}")
@@ -135,11 +135,11 @@ def main():
     logger.info("✓ fail_over completed successfully")
 
     logger.info("Waiting for system to reach state 2...")
-    wait_state(2, peer_node, hsa_node)
+    wait_state(state=2, peer=peer_node, other=hsa_node)
     logger.info("✓ System verified to be in state 2")
 
     logger.info("Getting peer info to obtain peer ID...")
-    peer_status, _ = peer_info(peer_node)
+    peer_status, _ = peer_info(node=peer_node)
 
     if not peer_status.found:
         exit_with_error("Could not find peer information")
@@ -149,7 +149,7 @@ def main():
 
     logger.info("Calling switch_primary_secondary on peer...")
     while True:
-        switch_response = switch_primary_secondary(peer_node, peer_id)
+        switch_response = switch_primary_secondary(node=peer_node, id=peer_id)
 
         # Check for LeaderFollower Job Active
         if (
@@ -193,23 +193,23 @@ def main():
         )
 
     logger.info("Waiting for system to reach state 3...")
-    wait_state(3, peer_node, hsa_node)
+    wait_state(state=3, peer=peer_node, other=hsa_node)
     logger.info("✓ System verified to be in state 3")
 
     logger.info("Get integration token from peer...")
-    integration_token = get_integration_token(hsa_node)
+    integration_token = get_integration_token(node=hsa_node)
 
     logger.info(f"✓ Integration token obtained (length: {len(integration_token)})")
 
     logger.info("Calling leave_cluster_hsa on HSA...")
     try:
-        leave_cluster_hsa(peer_node, integration_token)
+        leave_cluster_hsa(node=peer_node, integration_token=integration_token)
         logger.info("✓ leave_cluster_hsa completed successfully")
     except Exception as e:
         exit_with_error(f"leave_cluster_hsa failed: {str(e)}")
 
     logger.info("Waiting for system to reach state 4...")
-    wait_state(4, peer_node, hsa_node)
+    wait_state(state=4, peer=peer_node, other=hsa_node)
     logger.info("✓ System verified to be in state 4")
 
     logger.info("=" * 60)

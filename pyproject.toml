@@ -3,18 +3,20 @@ name = "pave_repave"
 version = "0.1.0"
 description = "HSA pave/repave utilities"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "pydantic>=2.13.4",
+]
 
 [project.scripts]
-become-hsa = "pave_repave.become_hsa:main"
-fail-over = "pave_repave.fail_over:main"
-get-integration-token = "pave_repave.get_integration_token:main"
-get-state = "pave_repave.get_state:main"
-leave-cluster-hsa = "pave_repave.leave_cluster_hsa:main"
+become_hsa = "pave_repave.become_hsa:main"
+fail_over = "pave_repave.fail_over:main"
+get_integration_token = "pave_repave.get_integration_token:main"
+get_state = "pave_repave.get_state:main"
+leave_cluster_hsa = "pave_repave.leave_cluster_hsa:main"
 pave = "pave_repave.pave:main"
 peer_info = "pave_repave.peer_info:main"
 repave = "pave_repave.repave:main"
-switch-primary-secondary = "pave_repave.switch_primary_secondary:main"
+switch_primary_secondary = "pave_repave.switch_primary_secondary:main"
 
 [build-system]
 requires = ["hatchling"]

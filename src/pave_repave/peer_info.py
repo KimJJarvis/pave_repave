@@ -33,33 +33,29 @@ def peer_info(node: Node) -> tuple[Status, dict]:
     logger.info(f"Querying peers from {base_url}...")
 
     # Make the API request (GET method)
-    response = make_single_api_request(url, node.token, method="GET")
+    response = make_single_api_request(url=url, bearer_token=node.token, method="GET")
 
     # Extract peer information
     try:
         if "peers" not in response:
-            logger.error("'peers' field not found in response")
+            msg = "'peers' field not found in response"
+            logger.error(msg)
             return (
                 Status(
                     found=False,
-                    active_appliance=0,
-                    primary_ip="",
-                    secondary_ip="",
-                    id=0,
+                    msg=msg
                 ),
                 response,
             )
 
         peers = response.get("peers", [])
         if not peers:
-            logger.error("No peers found in response")
+            msg = "No peers found in response"
+            logger.error(msg)
             return (
                 Status(
                     found=False,
-                    active_appliance=0,
-                    primary_ip="",
-                    secondary_ip="",
-                    id=0,
+                    msg=msg
                 ),
                 response,
             )
@@ -69,6 +65,29 @@ def peer_info(node: Node) -> tuple[Status, dict]:
         logger.debug(f"Searching for peer matching target IP: {target_ip}")
 
         for peer in peers:
+            # Validate required fields are present
+            if "primaryIp" not in peer:
+                msg = "Required field 'primaryIp' not present in peer data"
+                logger.error(msg)
+                return (
+                    Status(
+                        found=False,
+                        msg=msg
+                    ),
+                    response,
+                )
+            
+            if "id" not in peer:
+                msg = "Required field 'id' not present in peer data"
+                logger.error(msg)
+                return (
+                    Status(
+                        found=False,
+                        msg=msg
+                    ),
+                    response,
+                )
+            
             primary_ip = peer.get("primaryIp", "")
             secondary_ip = peer.get("secondaryIp", "")
 
@@ -102,19 +121,23 @@ def peer_info(node: Node) -> tuple[Status, dict]:
                 )
 
         # No matching peer found
-        logger.info(f"No peer found matching target IP: {target_ip}")
+        msg = f"No peer found matching target IP: {target_ip}"
+        logger.info(msg)
         return (
             Status(
-                found=False, active_appliance=0, primary_ip="", secondary_ip="", id=0
+                found=False,
+                msg=msg
             ),
             response,
         )
 
     except KeyError as e:
-        logger.error(f"Missing expected field: {e}")
+        msg = f"Missing expected field: {e}"
+        logger.error(msg)
         return (
             Status(
-                found=False, active_appliance=0, primary_ip="", secondary_ip="", id=0
+                found=False,
+                msg=msg
             ),
             response,
         )
@@ -161,29 +184,31 @@ def main():
     logger.info("=" * 60)
 
     # Get peer info
-    status, full_response = peer_info(node)
+    status, full_response = peer_info(node=node)
 
     logger.info("=" * 60)
     logger.info("✓ Query completed successfully!")
     logger.info("=" * 60)
 
-    # Output the complete JSON response to stdout
-    print("\nComplete API Response:")
-    print(json.dumps(full_response, indent=2))
-
     # Also output the parsed status for reference to stderr via logger
     logger.info("=" * 60)
     logger.info("Parsed Peer Info Status:")
-    logger.info(
-        json.dumps(
-            {
-                "found": status.found,
-                "active_appliance": status.active_appliance,
-                "primary_ip": status.primary_ip,
-                "secondary_ip": status.secondary_ip,
-                "id": status.id,
-            },
-            indent=2,
-        )
+    parsed_status = json.dumps(
+        {
+            "found": status.found,
+            "active_appliance": status.active_appliance,
+            "primary_ip": status.primary_ip,
+            "secondary_ip": status.secondary_ip,
+            "id": status.id,
+            "msg": status.msg,
+        },
+        indent=2,
     )
+    logger.info(parsed_status)
     logger.info("=" * 60)
+    
+    # Print parsed status to console (stdout)
+    print("\n" + "=" * 60)
+    print("Parsed Peer Info Status:")
+    print(parsed_status)
+    print("=" * 60)

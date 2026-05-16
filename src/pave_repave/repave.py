@@ -137,7 +137,7 @@ def main():
 
     # Step 1: Verify system is in state 4
     logger.info("[STEP 3] Verifying system is in state 4...")
-    if not verify_state(state=4, peer=peer_node, hsa=spare_node):
+    if not verify_state(state=4, peer=peer_node, other=spare_node):
         exit_with_error(
             "System is not in state 4 (peer primary, spare secondary, activeAppliance=PRIMARY)"
         )
@@ -148,7 +148,7 @@ def main():
     logger.info("[STEP 3] Getting integration token from peer...")
     integration_token: str = ""
     try:
-        integration_token = get_integration_token(peer_node)
+        integration_token = get_integration_token(node=peer_node)
         logger.info(f"✓ Integration token obtained (length: {len(integration_token)})")
         logger.info("✓ Step 3 completed successfully")
     except SystemExit:
@@ -166,7 +166,7 @@ def main():
     # Step 4: Call become_hsa on the spare
     logger.info("[STEP 4] Calling become_hsa on spare...")
     try:
-        response = become_hsa(spare_node, args.ip_peer, integration_token)
+        response = become_hsa(node=spare_node, ip_cluster=args.ip_peer, integration_token=integration_token)
 
         # Check for HTTP status code 200
         http_status = response.get(
@@ -198,12 +198,12 @@ def main():
 
     # Wait for system to reach state 3
     logger.info("[STEP 4] Waiting for system to reach state 3...")
-    wait_state(1, peer=peer_node, hsa=spare_node)
+    wait_state(state=1, peer=peer_node, other=spare_node)
     logger.info("✓ Step 4 completed successfully")
 
     # Step 6: Call fail_over() on the peer
     logger.info("[STEP 6] Calling fail_over on peer...")
-    fail_over_response = fail_over(peer_node)
+    fail_over_response = fail_over(node=peer_node)
 
     if fail_over_response.code == 400:
         exit_with_error(f"fail_over returned 400: {fail_over_response.message}")
@@ -219,12 +219,12 @@ def main():
 
     # Wait for system to reach state 2
     logger.info("[STEP 4] Waiting for system to reach state 2...")
-    wait_state(2, peer=peer_node, hsa=spare_node)
+    wait_state(state=2, peer=peer_node, other=spare_node)
     logger.info("✓ Step 4 completed successfully")
 
     # Step 7: Get peer info to obtain peer ID
     logger.info("[STEP 7] Getting peer info to obtain peer ID...")
-    peer_status, _ = peer_info(spare_node)
+    peer_status, _ = peer_info(node=spare_node)
 
     if not peer_status.found:
         exit_with_error("Could not find peer information")
@@ -237,7 +237,7 @@ def main():
     logger.info("[STEP 8] Calling switch_primary_secondary on peer...")
 
     while True:
-        switch_response = switch_primary_secondary(peer_node, peer_id)
+        switch_response = switch_primary_secondary(node=peer_node, id=peer_id)
 
         # Check for LeaderFollower Job Active
         if (
@@ -284,7 +284,7 @@ def main():
 
     # Wait for system to reach state 1
     logger.info("[STEP 4] Waiting for system to reach state 1...")
-    wait_state(3, peer=peer_node, hsa=spare_node)
+    wait_state(state=3, peer=peer_node, other=spare_node)
     logger.info("✓ Step 4 completed successfully")
 
     logger.info("=" * 60)

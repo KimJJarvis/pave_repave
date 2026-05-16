@@ -32,7 +32,7 @@ def setup_logging(level: str, log_file: str | None = None) -> None:
     )
 
 
-def validate_ip_address(ip: str) -> bool:
+def validate_ip_format(ip: str) -> bool:
     """
     Validate that the IP address is in valid dot format (IPv4).
 
@@ -40,7 +40,7 @@ def validate_ip_address(ip: str) -> bool:
         ip: IP address string to validate
 
     Returns:
-        True if valid, False otherwise
+        True if valid format, False otherwise
     """
     # IPv4 pattern: four octets (0-255) separated by dots
     pattern = r"^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$"
@@ -49,10 +49,35 @@ def validate_ip_address(ip: str) -> bool:
     if not match:
         return False
 
+    octets = [int(octet) for octet in match.groups()]
+
     # Check that each octet is in range 0-255
-    for octet in match.groups():
-        if int(octet) > 255:
-            return False
+    if any(octet > 255 for octet in octets):
+        return False
+
+    return True
+
+
+def validate_ip_address(ip: str) -> bool:
+    """
+    Validate that the IP address is in valid dot format (IPv4) and not a loopback address.
+
+    Args:
+        ip: IP address string to validate
+
+    Returns:
+        True if valid and not loopback, False otherwise
+    """
+    # First validate the format
+    if not validate_ip_format(ip):
+        return False
+
+    # Extract octets to check for loopback
+    octets = [int(octet) for octet in ip.split(".")]
+
+    # Loopback addresses are not valid for this application
+    if octets[0] == 127:
+        return False
 
     return True
 

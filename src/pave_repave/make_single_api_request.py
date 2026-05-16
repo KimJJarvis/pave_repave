@@ -81,8 +81,9 @@ def make_single_api_request(
         ) as response:
             logger.debug(f"Response status: {response.status}")
             response_data = response.read().decode("utf-8")
-            # logger.debug(f"Response data: {response_data}")
-            return json.loads(response_data)
+            parsed_response = json.loads(response_data)
+            logger.debug(f"Response data: {json.dumps(parsed_response, indent=2)}")
+            return parsed_response
 
     except urllib.error.HTTPError as e:
         error_body = e.read().decode("utf-8")
