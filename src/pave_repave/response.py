@@ -9,7 +9,6 @@ from dataclasses import dataclass
 @dataclass
 class Response:
     """Represents an API response with message and status code."""
+
     message: str
     code: int
-
-# Made with Bob

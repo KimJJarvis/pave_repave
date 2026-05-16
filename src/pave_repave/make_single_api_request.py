@@ -21,20 +21,20 @@ def make_single_api_request(
     url: str,
     bearer_token: str,
     method: str = "GET",
-    data: Optional[Dict[str, Any]] = None
+    data: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Make a single API request to the NMS API without retries.
-    
+
     Args:
         url: The full URL to request
         bearer_token: The bearer token for authentication
         method: HTTP method (GET or POST)
         data: Optional data dictionary for POST requests
-        
+
     Returns:
         Response data as dictionary
-        
+
     Raises:
         SystemExit: If the request fails
     """
@@ -52,71 +52,67 @@ def make_single_api_request(
     logger.debug(f"Request port: {port}")
     if data:
         logger.debug(f"Request data: {json.dumps(data, indent=2)}")
-    
+
     # Create SSL context that doesn't verify certificates (equivalent to curl -k)
     ssl_context = ssl.create_default_context()
     ssl_context.check_hostname = False
     ssl_context.verify_mode = ssl.CERT_NONE
-    
+
     # Prepare headers
-    headers = {
-        "Accept": "application/json",
-        "Authorization": f"bearer {bearer_token}"
-    }
-    
+    headers = {"Accept": "application/json", "Authorization": f"bearer {bearer_token}"}
+
     # Prepare request data
     request_data = None
     if data is not None:
         headers["Content-Type"] = "application/json"
-        request_data = json.dumps(data).encode('utf-8')
-    
+        request_data = json.dumps(data).encode("utf-8")
+
     # Create request
     request = urllib.request.Request(
-        url,
-        data=request_data,
-        headers=headers,
-        method=method
+        url, data=request_data, headers=headers, method=method
     )
-    
+
     logger.debug("Sending request...")
-    
+
     try:
         # Make the request with timeout
-        with urllib.request.urlopen(request, context=ssl_context, timeout=30) as response:
+        with urllib.request.urlopen(
+            request, context=ssl_context, timeout=30
+        ) as response:
             logger.debug(f"Response status: {response.status}")
-            response_data = response.read().decode('utf-8')
+            response_data = response.read().decode("utf-8")
             # logger.debug(f"Response data: {response_data}")
             return json.loads(response_data)
-                    
+
     except urllib.error.HTTPError as e:
-        error_body = e.read().decode('utf-8')
+        error_body = e.read().decode("utf-8")
         logger.debug(f"HTTP Error {e.code}: {e.reason}")
         logger.debug(f"URL: {url}")
         logger.debug(f"Response: {error_body}")
-        
+
         # Exit with error if authentication fails (401 Unauthorized)
         if e.code == 401:
             # Check if token is expired or just invalid
             error_message_lower = error_body.lower()
-            if 'token is expired' in error_message_lower or 'token expired' in error_message_lower:
+            if (
+                "token is expired" in error_message_lower
+                or "token expired" in error_message_lower
+            ):
                 logger.error("Bearer token expired")
             else:
                 logger.error("Invalid bearer token")
             sys.exit(1)
-        
+
         # Parse and return the error response so caller can handle it
         try:
             error_data = json.loads(error_body)
             # Add the HTTP status code to the response
-            error_data['_http_status_code'] = e.code
+            error_data["_http_status_code"] = e.code
             return error_data
         except json.JSONDecodeError:
             # If response is not JSON, return a structured error
-            return {
-                'error': error_body,
-                '_http_status_code': e.code
-            }
-        
+            return {"error": error_body, "_http_status_code": e.code}
+
     except urllib.error.URLError as e:
         logger.error(f"URL Error: {e.reason}")
         logger.error(f"URL: {url}")
@@ -132,5 +128,3 @@ def make_single_api_request(
         logger.error(f"Unexpected error: {type(e).__name__}: {e}")
         logger.error(f"URL: {url}")
         sys.exit(1)
-
-# Made with Bob

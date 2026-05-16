@@ -9,9 +9,9 @@ import sys
 import json
 import logging
 
-from node import Node
-from make_single_api_request import make_single_api_request
-from utilities import setup_logging
+from pave_repave.node import Node
+from pave_repave.make_single_api_request import make_single_api_request
+from pave_repave.utilities import setup_logging
 
 logger = logging.getLogger(__name__)
 
@@ -40,26 +40,17 @@ def main():
         "--log-level",
         default="INFO",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Set the logging level"
+        help="Set the logging level",
     )
     parser.add_argument(
-        "--log-file",
-        type=str,
-        default=None,
-        help="Log to file instead of console"
+        "--log-file", type=str, default=None, help="Log to file instead of console"
     )
     parser.add_argument(
         "--token", required=True, help="Bearer token for authentication"
     )
-    parser.add_argument(
-        "--ip", required=True, help="IP address (dot format)"
-    )
-    parser.add_argument(
-        "--port", required=True, type=int, help="Port number for host"
-    )
-    parser.add_argument(
-        "--integration_token", required=True, help="Integration token"
-    )
+    parser.add_argument("--ip", required=True, help="IP address (dot format)")
+    parser.add_argument("--port", required=True, type=int, help="Port number for host")
+    parser.add_argument("--integration_token", required=True, help="Integration token")
 
     args = parser.parse_args()
 
@@ -92,9 +83,3 @@ def main():
     logger.info("=" * 60)
     logger.info("✓ Operation completed successfully!")
     logger.info("=" * 60)
-
-
-if __name__ == "__main__":
-    main()
-
-# Made with Bob

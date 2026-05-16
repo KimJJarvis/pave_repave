@@ -1,0 +1,21 @@
+[project]
+name = "pave_repave"
+version = "0.1.0"
+description = "HSA pave/repave utilities"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+become-hsa = "pave_repave.become_hsa:main"
+fail-over = "pave_repave.fail_over:main"
+get-integration-token = "pave_repave.get_integration_token:main"
+get-state = "pave_repave.get_state:main"
+leave-cluster-hsa = "pave_repave.leave_cluster_hsa:main"
+pave = "pave_repave.pave:main"
+peer_info = "pave_repave.peer_info:main"
+repave = "pave_repave.repave:main"
+switch-primary-secondary = "pave_repave.switch_primary_secondary:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
