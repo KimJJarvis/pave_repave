@@ -11,7 +11,10 @@ import urllib.request
 import urllib.error
 import urllib.parse
 import ssl
+import logging
 from typing import Dict, Any, Optional
+
+logger = logging.getLogger(__name__)
 
 
 def make_single_api_request(
@@ -45,10 +48,10 @@ def make_single_api_request(
         else:
             port = "unknown"
 
-    print(f"[DEBUG] Making {method} request to: {url}", file=sys.stderr)
-    print(f"[DEBUG] Request port: {port}", file=sys.stderr)
+    logger.debug(f"Making {method} request to: {url}")
+    logger.debug(f"Request port: {port}")
     if data:
-        print(f"[DEBUG] Request data: {json.dumps(data, indent=2)}", file=sys.stderr)
+        logger.debug(f"Request data: {json.dumps(data, indent=2)}")
     
     # Create SSL context that doesn't verify certificates (equivalent to curl -k)
     ssl_context = ssl.create_default_context()
@@ -75,21 +78,32 @@ def make_single_api_request(
         method=method
     )
     
-    print(f"[DEBUG] Sending request...", file=sys.stderr)
+    logger.debug("Sending request...")
     
     try:
         # Make the request with timeout
         with urllib.request.urlopen(request, context=ssl_context, timeout=30) as response:
-            print(f"[DEBUG] Response status: {response.status}", file=sys.stderr)
+            logger.debug(f"Response status: {response.status}")
             response_data = response.read().decode('utf-8')
-            # print(f"[DEBUG] Response data: {response_data}", file=sys.stderr)
+            # logger.debug(f"Response data: {response_data}")
             return json.loads(response_data)
                     
     except urllib.error.HTTPError as e:
         error_body = e.read().decode('utf-8')
-        print(f"[DEBUG] HTTP Error {e.code}: {e.reason}", file=sys.stderr)
-        print(f"[DEBUG] URL: {url}", file=sys.stderr)
-        print(f"[DEBUG] Response: {error_body}", file=sys.stderr)
+        logger.debug(f"HTTP Error {e.code}: {e.reason}")
+        logger.debug(f"URL: {url}")
+        logger.debug(f"Response: {error_body}")
+        
+        # Exit with error if authentication fails (401 Unauthorized)
+        if e.code == 401:
+            # Check if token is expired or just invalid
+            error_message_lower = error_body.lower()
+            if 'token is expired' in error_message_lower or 'token expired' in error_message_lower:
+                logger.error("Bearer token expired")
+            else:
+                logger.error("Invalid bearer token")
+            sys.exit(1)
+        
         # Parse and return the error response so caller can handle it
         try:
             error_data = json.loads(error_body)
@@ -104,19 +118,19 @@ def make_single_api_request(
             }
         
     except urllib.error.URLError as e:
-        print(f"[ERROR] URL Error: {e.reason}", file=sys.stderr)
-        print(f"[ERROR] URL: {url}", file=sys.stderr)
+        logger.error(f"URL Error: {e.reason}")
+        logger.error(f"URL: {url}")
         sys.exit(1)
     except json.JSONDecodeError as e:
-        print(f"[ERROR] JSON Decode Error: {e}", file=sys.stderr)
+        logger.error(f"JSON Decode Error: {e}")
         sys.exit(1)
     except TimeoutError as e:
-        print(f"[ERROR] Request timed out after 30 seconds", file=sys.stderr)
-        print(f"[ERROR] URL: {url}", file=sys.stderr)
+        logger.error("Request timed out after 30 seconds")
+        logger.error(f"URL: {url}")
         sys.exit(1)
     except Exception as e:
-        print(f"[ERROR] Unexpected error: {type(e).__name__}: {e}", file=sys.stderr)
-        print(f"[ERROR] URL: {url}", file=sys.stderr)
+        logger.error(f"Unexpected error: {type(e).__name__}: {e}")
+        logger.error(f"URL: {url}")
         sys.exit(1)
 
 # Made with Bob

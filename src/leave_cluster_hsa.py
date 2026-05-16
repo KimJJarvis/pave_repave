@@ -7,9 +7,13 @@ Retrieves an integration token and calls the leave-cluster-hsa endpoint.
 import argparse
 import sys
 import json
+import logging
 
 from node import Node
 from make_single_api_request import make_single_api_request
+from utilities import setup_logging
+
+logger = logging.getLogger(__name__)
 
 
 def leave_cluster_hsa(node: Node, integration_token: str) -> None:
@@ -22,20 +26,28 @@ def leave_cluster_hsa(node: Node, integration_token: str) -> None:
     """
     base_url = f"https://localhost:{node.port}"
     url = f"{base_url}/api/v3/cluster-orchestrator/leave-cluster-hsa"
-    print(f"Calling leave-cluster-hsa on {url}...", file=sys.stderr)
+    logger.info(f"Calling leave-cluster-hsa on {url}...")
     data = {"force": True, "ip": node.ip, "token": integration_token}
 
     response = make_single_api_request(url, node.token, method="POST", data=data)
-    print(
-        f"✓ leave-cluster-hsa completed: {response.get('status', 'unknown')}",
-        file=sys.stderr,
-    )
+    logger.info(f"✓ leave-cluster-hsa completed: {response.get('status', 'unknown')}")
 
 
 def main():
     """Main entry point for the script."""
-    print("[DEBUG] Starting leave-cluster-hsa.py script", file=sys.stderr)
     parser = argparse.ArgumentParser(description="Leave an HSA cluster using NMS API")
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Set the logging level"
+    )
+    parser.add_argument(
+        "--log-file",
+        type=str,
+        default=None,
+        help="Log to file instead of console"
+    )
     parser.add_argument(
         "--token", required=True, help="Bearer token for authentication"
     )
@@ -51,11 +63,15 @@ def main():
 
     args = parser.parse_args()
 
-    print(f"[DEBUG] Arguments parsed:", file=sys.stderr)
-    print(f"[DEBUG]   Token: {args.token[:20]}...", file=sys.stderr)
-    print(f"[DEBUG]   IP: {args.ip}", file=sys.stderr)
-    print(f"[DEBUG]   Port: {args.port}", file=sys.stderr)
-    print(f"[DEBUG]   Integration Token: {args.integration_token[:20]}...", file=sys.stderr)
+    # ⚠️ Must be called before any other logging calls
+    setup_logging(args.log_level, args.log_file)
+
+    logger.debug("Starting leave-cluster-hsa.py script")
+    logger.debug("Arguments parsed:")
+    logger.debug(f"  Token: {args.token[:20]}...")
+    logger.debug(f"  IP: {args.ip}")
+    logger.debug(f"  Port: {args.port}")
+    logger.debug(f"  Integration Token: {args.integration_token[:20]}...")
 
     # Create Node object
     node = Node(port=args.port, token=args.token, ip=args.ip)
@@ -63,19 +79,19 @@ def main():
     # Construct base URL - requests go to localhost with port forwarding
     base_url = f"https://localhost:{node.port}"
 
-    print("=" * 60, file=sys.stderr)
-    print("Leave Cluster HSA Workflow", file=sys.stderr)
-    print("=" * 60, file=sys.stderr)
-    print(f"Node: {base_url} (forwarded to {node.ip})", file=sys.stderr)
-    print("=" * 60, file=sys.stderr)
+    logger.info("=" * 60)
+    logger.info("Leave Cluster HSA Workflow")
+    logger.info("=" * 60)
+    logger.info(f"Node: {base_url} (forwarded to {node.ip})")
+    logger.info("=" * 60)
 
     # Call leave-cluster-hsa
-    print("\nCalling leave-cluster-hsa...", file=sys.stderr)
+    logger.info("Calling leave-cluster-hsa...")
     leave_cluster_hsa(node, args.integration_token)
 
-    print("\n" + "=" * 60, file=sys.stderr)
-    print("✓ Operation completed successfully!", file=sys.stderr)
-    print("=" * 60, file=sys.stderr)
+    logger.info("=" * 60)
+    logger.info("✓ Operation completed successfully!")
+    logger.info("=" * 60)
 
 
 if __name__ == "__main__":

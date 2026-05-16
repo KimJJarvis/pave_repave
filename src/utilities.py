@@ -5,6 +5,31 @@ Utility functions for validation and common operations.
 
 import re
 import sys
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def setup_logging(level: str, log_file: str | None = None) -> None:
+    """
+    Configure logging for the application.
+    
+    Args:
+        level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        log_file: Optional file path to log to (in addition to console)
+    """
+    numeric_level = getattr(logging, level.upper(), logging.INFO)
+    
+    # Route to console, file, or both
+    handlers = [logging.StreamHandler(sys.stderr)]
+    if log_file:
+        handlers.append(logging.FileHandler(log_file))
+
+    logging.basicConfig(
+        level=numeric_level,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        handlers=handlers
+    )
 
 
 def validate_ip_address(ip: str) -> bool:
@@ -61,12 +86,12 @@ def validate_token_length(token: str, expected_length: int) -> bool:
 
 def exit_with_error(message: str) -> None:
     """
-    Print an error message to stderr and exit with code 1.
+    Log an error message and exit with code 1.
     
     Args:
         message: Error message to display
     """
-    print(f"[ERROR] {message}", file=sys.stderr)
+    logger.error(message)
     sys.exit(1)
 
 # Made with Bob

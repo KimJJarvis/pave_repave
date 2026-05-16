@@ -8,6 +8,7 @@ then determines and prints the current state (0-4).
 import argparse
 import sys
 import time
+import logging
 
 from node import Node
 from peer_info import peer_info
@@ -15,8 +16,11 @@ from utilities import (
     validate_ip_address,
     validate_port,
     validate_token_length,
-    exit_with_error
+    exit_with_error,
+    setup_logging
 )
+
+logger = logging.getLogger(__name__)
 
 
 def which_state(peer: Node, hsa: Node) -> int:
@@ -56,42 +60,26 @@ def which_state(peer: Node, hsa: Node) -> int:
     localhost_check_hsa = Node(port=hsa.port, token=hsa.token, ip="127.0.0.1")
     localhost_status_on_hsa, _ = peer_info(localhost_check_hsa)
     
-    print(peer_status_on_peer)
-    print(hsa_status_on_peer)
-    print(hsa_status_on_hsa)
-    print(localhost_status_on_peer)
-    print(localhost_status_on_hsa)
+    logger.debug(f"peer_status_on_peer: {peer_status_on_peer}")
+    logger.debug(f"hsa_status_on_peer: {hsa_status_on_peer}")
+    logger.debug(f"hsa_status_on_hsa: {hsa_status_on_hsa}")
+    logger.debug(f"localhost_status_on_peer: {localhost_status_on_peer}")
+    logger.debug(f"localhost_status_on_hsa: {localhost_status_on_hsa}")
 
 
-    # Check for State 4: Both nodes standalone
-    # Each node is standalone (primary with no secondary, activeAppliance=PRIMARY)
-    # Neither node knows about the other's external IP
-    # Can check either via external IP or localhost (127.0.0.1)
-    
-    # Check if peer is standalone (either via peer.ip or localhost)
-    peer_standalone = ((peer_status_on_peer.found and
-                       peer_status_on_peer.primary_ip == peer.ip and
-                       peer_status_on_peer.secondary_ip == "" and
-                       peer_status_on_peer.active_appliance == 1) or
-                      (localhost_status_on_peer.found and
-                       localhost_status_on_peer.primary_ip == "127.0.0.1" and
-                       localhost_status_on_peer.secondary_ip == "" and
-                       localhost_status_on_peer.active_appliance == 1))
-    
-    # Check if hsa is standalone (either via hsa.ip or localhost)
-    hsa_standalone = ((peer_status_on_hsa.found and
-                      peer_status_on_hsa.primary_ip == hsa.ip and
-                      peer_status_on_hsa.secondary_ip == "" and
-                      peer_status_on_hsa.active_appliance == 1) or
-                     (localhost_status_on_hsa.found and
-                      localhost_status_on_hsa.primary_ip == "127.0.0.1" and
-                      localhost_status_on_hsa.secondary_ip == "" and
-                      localhost_status_on_hsa.active_appliance == 1))
-    
-    # Neither node knows about the other
-    nodes_not_connected = not hsa_status_on_peer.found and not peer_status_on_hsa.found
-    
-    if peer_standalone and hsa_standalone and nodes_not_connected:
+    # Check for State 4: Peer standalone, HSA standalone
+    # Both nodes are standalone with 127.0.0.1 as primary, no secondary, activeAppliance=PRIMARY
+    # Neither node knows about the other's external IP (hsa_ip not found on peer, peer_ip not found on hsa)
+    if (peer_status_on_peer.found and
+        peer_status_on_peer.primary_ip == peer.ip and
+        peer_status_on_peer.secondary_ip == "" and
+        peer_status_on_peer.active_appliance == 1 and
+        not hsa_status_on_peer.found and
+        not peer_status_on_hsa.found and
+        localhost_status_on_hsa.found and
+        localhost_status_on_hsa.primary_ip == "127.0.0.1" and
+        localhost_status_on_hsa.secondary_ip == "" and
+        localhost_status_on_hsa.active_appliance == 1):
         return 4
     
     # Print reasons why system is not in state 4
@@ -118,9 +106,9 @@ def which_state(peer: Node, hsa: Node) -> int:
         reasons.append(f"localhost_status_on_hsa.active_appliance is {localhost_status_on_hsa.active_appliance} (expected 1)")
     
     if reasons:
-        print("\n[STATE 4 CHECK] System is NOT in state 4. Reasons:")
+        logger.debug("System is NOT in state 4. Reasons:")
         for reason in reasons:
-            print(f"  - {reason}")
+            logger.debug(f"  - {reason}")
     
     # Check for State 3: peer is secondary, hsa is primary, activeAppliance=PRIMARY on both
     # Peer: peer_ip is secondary, hsa_ip is primary, activeAppliance=PRIMARY
@@ -219,22 +207,22 @@ def wait_state(state: int, peer: Node, hsa: Node) -> None:
     max_retries = 10  # Maximum number of retries
     retry_count = 0
     
-    print(f"\n[WAIT_STATE] Waiting for state {state}...", file=sys.stderr)
+    logger.info(f"Waiting for state {state}...")
     
     while retry_count < max_retries:
         if retry_count > 0:
-            print(f"\n[WAIT_STATE] Retry attempt {retry_count}/{max_retries}...", file=sys.stderr)
+            logger.info(f"Retry attempt {retry_count}/{max_retries}...")
         
         # Check if we're in the desired state
         if verify_state(state, peer, hsa):
-            print(f"\n✓ [WAIT_STATE] State {state} reached successfully", file=sys.stderr)
+            logger.info(f"✓ State {state} reached successfully")
             return
         
         # If not in desired state, wait and retry
         retry_count += 1
         if retry_count < max_retries:
             current_state = which_state(peer, hsa)
-            print(f"\n⚠ [WAIT_STATE] Current state is {current_state}, not {state}. Waiting 30 seconds before retry...", file=sys.stderr)
+            logger.warning(f"Current state is {current_state}, not {state}. Waiting 30 seconds before retry...")
             time.sleep(30)
         else:
             current_state = which_state(peer, hsa)
@@ -243,10 +231,20 @@ def wait_state(state: int, peer: Node, hsa: Node) -> None:
 
 def main():
     """Main entry point for the get_state script."""
-    print("[DEBUG] Starting get_state.py script", file=sys.stderr)
-    
     parser = argparse.ArgumentParser(
         description="Get state of peer and HSA configuration"
+    )
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Set the logging level"
+    )
+    parser.add_argument(
+        "--log-file",
+        type=str,
+        default=None,
+        help="Log to file instead of console"
     )
     parser.add_argument(
         "--token_peer",
@@ -283,16 +281,20 @@ def main():
     
     args = parser.parse_args()
     
-    print(f"[DEBUG] Arguments parsed:", file=sys.stderr)
-    print(f"[DEBUG]   Peer Token: {args.token_peer[:20]}...", file=sys.stderr)
-    print(f"[DEBUG]   Peer IP: {args.ip_peer}", file=sys.stderr)
-    print(f"[DEBUG]   Peer Port: {args.port_peer}", file=sys.stderr)
-    print(f"[DEBUG]   HSA Token: {args.token_hsa[:20]}...", file=sys.stderr)
-    print(f"[DEBUG]   HSA IP: {args.ip_hsa}", file=sys.stderr)
-    print(f"[DEBUG]   HSA Port: {args.port_hsa}", file=sys.stderr)
+    # ⚠️ Must be called before any other logging calls
+    setup_logging(args.log_level, args.log_file)
+    
+    logger.debug("Starting get_state.py script")
+    logger.debug("Arguments parsed:")
+    logger.debug(f"  Peer Token: {args.token_peer[:20]}...")
+    logger.debug(f"  Peer IP: {args.ip_peer}")
+    logger.debug(f"  Peer Port: {args.port_peer}")
+    logger.debug(f"  HSA Token: {args.token_hsa[:20]}...")
+    logger.debug(f"  HSA IP: {args.ip_hsa}")
+    logger.debug(f"  HSA Port: {args.port_hsa}")
 
     # Step 0: Verify parameters (same as repave.py)
-    print("\n[STEP 0] Verifying parameters...", file=sys.stderr)
+    logger.info("[STEP 0] Verifying parameters...")
 
     # Validate IP addresses
     if not validate_ip_address(args.ip_peer):
@@ -305,7 +307,7 @@ def main():
     if args.ip_peer == args.ip_hsa:
         exit_with_error(f"Peer and HSA IP addresses must be distinct: {args.ip_peer}")
     
-    print(f"✓ IP addresses validated and are distinct", file=sys.stderr)
+    logger.info("✓ IP addresses validated and are distinct")
     
     # Validate port numbers
     if not validate_port(args.port_peer):
@@ -318,7 +320,7 @@ def main():
     if args.port_peer == args.port_hsa:
         exit_with_error(f"Peer and HSA port numbers must be distinct: {args.port_peer}")
     
-    print(f"✓ Port numbers validated and are distinct", file=sys.stderr)
+    logger.info("✓ Port numbers validated and are distinct")
     
     # Validate token lengths (361 characters)
     if not validate_token_length(args.token_peer, 361):
@@ -327,27 +329,27 @@ def main():
     if not validate_token_length(args.token_hsa, 361):
         exit_with_error(f"Invalid HSA token length: {len(args.token_hsa)} (expected 361)")
     
-    print(f"✓ Token lengths validated (361 characters)", file=sys.stderr)
-    print("✓ All parameter validations passed", file=sys.stderr)
+    logger.info("✓ Token lengths validated (361 characters)")
+    logger.info("✓ All parameter validations passed")
     
     # Construct Node objects
     peer_node = Node(port=args.port_peer, token=args.token_peer, ip=args.ip_peer)
     hsa_node = Node(port=args.port_hsa, token=args.token_hsa, ip=args.ip_hsa)
     
-    print("\n" + "=" * 60, file=sys.stderr)
-    print("Get State", file=sys.stderr)
-    print("=" * 60, file=sys.stderr)
-    print(f"Peer Node: https://localhost:{peer_node.port} (forwarded to {peer_node.ip})", file=sys.stderr)
-    print(f"HSA Node: https://localhost:{hsa_node.port} (forwarded to {hsa_node.ip})", file=sys.stderr)
-    print("=" * 60, file=sys.stderr)
+    logger.info("=" * 60)
+    logger.info("Get State")
+    logger.info("=" * 60)
+    logger.info(f"Peer Node: https://localhost:{peer_node.port} (forwarded to {peer_node.ip})")
+    logger.info(f"HSA Node: https://localhost:{hsa_node.port} (forwarded to {hsa_node.ip})")
+    logger.info("=" * 60)
     
     # Determine and print the current state
-    print("\n[GET_STATE] Determining current state...", file=sys.stderr)
+    logger.info("Determining current state...")
     current_state = which_state(peer_node, hsa_node)
     
-    print("\n" + "=" * 60, file=sys.stderr)
-    print(f"Current State: {current_state}", file=sys.stderr)
-    print("=" * 60, file=sys.stderr)
+    logger.info("=" * 60)
+    logger.info(f"Current State: {current_state}")
+    logger.info("=" * 60)
     
     # Print state to console (stdout)
     print(current_state)

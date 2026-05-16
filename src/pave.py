@@ -7,6 +7,7 @@ get-integration-token, and leave-cluster-hsa operations.
 import argparse
 import sys
 import time
+import logging
 
 from node import Node
 from fail_over import fail_over
@@ -19,16 +20,29 @@ from utilities import (
     validate_ip_address,
     validate_port,
     validate_token_length,
-    exit_with_error
+    exit_with_error,
+    setup_logging
 )
+
+logger = logging.getLogger(__name__)
 
 
 def main():
     """Main entry point for the fused workflow script."""
-    print("[DEBUG] Starting fused.py script", file=sys.stderr)
-    
     parser = argparse.ArgumentParser(
         description="Fused workflow for fail-over and cluster operations"
+    )
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Set the logging level"
+    )
+    parser.add_argument(
+        "--log-file",
+        type=str,
+        default=None,
+        help="Log to file instead of console"
     )
     parser.add_argument(
         "--ip_peer",
@@ -60,14 +74,18 @@ def main():
     
     args = parser.parse_args()
     
-    print(f"[DEBUG] Arguments parsed:", file=sys.stderr)
-    print(f"[DEBUG]   Peer IP: {args.ip_peer}", file=sys.stderr)
-    print(f"[DEBUG]   Peer Token: {args.token_peer[:20]}...", file=sys.stderr)
-    print(f"[DEBUG]   Peer Port: {args.port_peer}", file=sys.stderr)
-    print(f"[DEBUG]   HSA IP: {args.ip_hsa}", file=sys.stderr)
-    print(f"[DEBUG]   HSA Port: {args.port_hsa}", file=sys.stderr)
+    # ⚠️ Must be called before any other logging calls
+    setup_logging(args.log_level, args.log_file)
+    
+    logger.debug("Starting pave.py script")
+    logger.debug("Arguments parsed:")
+    logger.debug(f"  Peer IP: {args.ip_peer}")
+    logger.debug(f"  Peer Token: {args.token_peer[:20]}...")
+    logger.debug(f"  Peer Port: {args.port_peer}")
+    logger.debug(f"  HSA IP: {args.ip_hsa}")
+    logger.debug(f"  HSA Port: {args.port_hsa}")
 
-    print("\nVerifying parameters...", file=sys.stderr)
+    logger.info("Verifying parameters...")
 
     # Validate IP addresses
     if not validate_ip_address(args.ip_peer):
@@ -95,25 +113,25 @@ def main():
     if not validate_token_length(args.token_peer, 361):
         exit_with_error(f"Invalid peer token length: {len(args.token_peer)} (expected 361)")
     
-    print("✓ All validations passed", file=sys.stderr)
+    logger.info("✓ All validations passed")
     
     # Construct Node objects
     peer_node = Node(port=args.port_peer, token=args.token_peer, ip=args.ip_peer)
     hsa_node = Node(port=args.port_hsa, token=args.token_peer, ip=args.ip_hsa)
     
-    print("\n" + "=" * 60, file=sys.stderr)
-    print("Fused Workflow", file=sys.stderr)
-    print("=" * 60, file=sys.stderr)
-    print(f"Peer Node: https://localhost:{peer_node.port} (forwarded to {peer_node.ip})", file=sys.stderr)
-    print(f"HSA Node: https://localhost:{hsa_node.port} (forwarded to {hsa_node.ip})", file=sys.stderr)
-    print("=" * 60, file=sys.stderr)
+    logger.info("=" * 60)
+    logger.info("Pave Workflow")
+    logger.info("=" * 60)
+    logger.info(f"Peer Node: https://localhost:{peer_node.port} (forwarded to {peer_node.ip})")
+    logger.info(f"HSA Node: https://localhost:{hsa_node.port} (forwarded to {hsa_node.ip})")
+    logger.info("=" * 60)
     
-    print("\nVerifying system is in state 1...", file=sys.stderr)
+    logger.info("Verifying system is in state 1...")
     if not verify_state(1, peer_node, hsa_node):
         exit_with_error("System is not in state 1 (peer primary, hsa secondary, activeAppliance=PRIMARY)")
-    print("✓ System verified to be in state 1", file=sys.stderr)
+    logger.info("✓ System verified to be in state 1")
     
-    print("\nCalling fail_over on peer...", file=sys.stderr)
+    logger.info("Calling fail_over on peer...")
     fail_over_response = fail_over(peer_node)
     
     if fail_over_response.code == 400:
@@ -125,34 +143,34 @@ def main():
     if "Failover successfully started" not in fail_over_response.message:
         exit_with_error(f"Unexpected fail_over response: {fail_over_response.message}")
     
-    print("✓ fail_over completed successfully", file=sys.stderr)
+    logger.info("✓ fail_over completed successfully")
     
-    print("\nWaiting for system to reach state 2...", file=sys.stderr)
+    logger.info("Waiting for system to reach state 2...")
     wait_state(2, peer_node, hsa_node)
-    print("✓ System verified to be in state 2", file=sys.stderr)
+    logger.info("✓ System verified to be in state 2")
 
-    print("\nGetting peer info to obtain peer ID...", file=sys.stderr)
+    logger.info("Getting peer info to obtain peer ID...")
     peer_status, _ = peer_info(peer_node)
     
     if not peer_status.found:
         exit_with_error("Could not find peer information")
     
     peer_id = peer_status.id
-    print(f"✓ Peer ID obtained: {peer_id}", file=sys.stderr)
+    logger.info(f"✓ Peer ID obtained: {peer_id}")
     
-    print("\nCalling switch_primary_secondary on peer...", file=sys.stderr)
+    logger.info("Calling switch_primary_secondary on peer...")
     while True:
-        switch_response = switch_primary_secondary(peer_node, peer_id)        
+        switch_response = switch_primary_secondary(peer_node, peer_id)
         
-        # Check for LeaderFollower Job Active 
+        # Check for LeaderFollower Job Active
         if "LeaderFollower Job Active, cannot switch-primary-secondary" in switch_response.message:
-            print("⚠ LeaderFollower Job Active, waiting 30 seconds before retry...", file=sys.stderr)
+            logger.warning("⚠ LeaderFollower Job Active, waiting 30 seconds before retry...")
             time.sleep(30)
             continue
 
-        # Check for fail over not yet complete 
+        # Check for fail over not yet complete
         if "A secondary-leader appliance was not found on this peer" in switch_response.message:
-            print("⚠ Fail over not yet complete, waiting 30 seconds before retry...", file=sys.stderr)
+            logger.warning("⚠ Fail over not yet complete, waiting 30 seconds before retry...")
             time.sleep(30)
             continue
 
@@ -162,35 +180,35 @@ def main():
         
         # Check for success
         if "The primary / secondary appliance roles on this peer have been switched" in switch_response.message:
-            print("✓ switch_primary_secondary completed successfully", file=sys.stderr)
+            logger.info("✓ switch_primary_secondary completed successfully")
             break
         
         # Any other response is an error
         exit_with_error(f"Unexpected switch_primary_secondary response: {switch_response.message}")
 
-    print("\nWaiting for system to reach state 3...", file=sys.stderr)
+    logger.info("Waiting for system to reach state 3...")
     wait_state(3, peer_node, hsa_node)
-    print("✓ System verified to be in state 3", file=sys.stderr)
+    logger.info("✓ System verified to be in state 3")
 
-    print("\nGet integration token from peer...", file=sys.stderr)
+    logger.info("Get integration token from peer...")
     integration_token = get_integration_token(hsa_node)
       
-    print(f"✓ Integration token obtained (length: {len(integration_token)})", file=sys.stderr)
+    logger.info(f"✓ Integration token obtained (length: {len(integration_token)})")
     
-    print("\nCalling leave_cluster_hsa on HSA...", file=sys.stderr)
+    logger.info("Calling leave_cluster_hsa on HSA...")
     try:
         leave_cluster_hsa(peer_node, integration_token)
-        print("✓ leave_cluster_hsa completed successfully", file=sys.stderr)
+        logger.info("✓ leave_cluster_hsa completed successfully")
     except Exception as e:
         exit_with_error(f"leave_cluster_hsa failed: {str(e)}")
     
-    print("\nWaiting for system to reach state 4...", file=sys.stderr)
+    logger.info("Waiting for system to reach state 4...")
     wait_state(4, peer_node, hsa_node)
-    print("✓ System verified to be in state 4", file=sys.stderr)
+    logger.info("✓ System verified to be in state 4")
 
-    print("\n" + "=" * 60, file=sys.stderr)
-    print("✓ Pave workflow completed successfully!", file=sys.stderr)
-    print("=" * 60, file=sys.stderr)
+    logger.info("=" * 60)
+    logger.info("✓ Pave workflow completed successfully!")
+    logger.info("=" * 60)
 
 
 if __name__ == "__main__":

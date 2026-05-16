@@ -7,10 +7,14 @@ Determines the peer ID and calls the switch-primary-secondary endpoint on porta.
 import argparse
 import sys
 import json
+import logging
 
 from node import Node
 from response import Response
 from make_single_api_request import make_single_api_request
+from utilities import setup_logging
+
+logger = logging.getLogger(__name__)
 
 
 def switch_primary_secondary(node: Node, id: int) -> Response:
@@ -26,7 +30,7 @@ def switch_primary_secondary(node: Node, id: int) -> Response:
     """
     base_url = f"https://localhost:{node.port}"
     url = f"{base_url}/api/v3/cluster-manager/switch-primary-secondary"
-    print(f"Calling switch-primary-secondary on {url}...", file=sys.stderr)
+    logger.info(f"Calling switch-primary-secondary on {url}...")
 
     data = {"peerId": str(id)}
 
@@ -54,19 +58,27 @@ def switch_primary_secondary(node: Node, id: int) -> Response:
         code = http_status
     
     response = Response(message=message, code=code)
-    print(
-        f"✓ switch-primary-secondary completed: {response.message} (code: {response.code})",
-        file=sys.stderr,
-    )
+    logger.info(f"✓ switch-primary-secondary completed: {response.message} (code: {response.code})")
     
     return response
 
 
 def main():
     """Main entry point for the script."""
-    print("[DEBUG] Starting switch-primary-secondary.py script", file=sys.stderr)
     parser = argparse.ArgumentParser(
         description="Perform switch-primary-secondary operation using NMS API"
+    )
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Set the logging level"
+    )
+    parser.add_argument(
+        "--log-file",
+        type=str,
+        default=None,
+        help="Log to file instead of console"
     )
     parser.add_argument(
         "--token",
@@ -83,11 +95,15 @@ def main():
 
     args = parser.parse_args()
 
-    print(f"[DEBUG] Arguments parsed:", file=sys.stderr)
-    print(f"[DEBUG]   Token: {args.token[:20]}...", file=sys.stderr)
-    print(f"[DEBUG]   IP: {args.ip}", file=sys.stderr)
-    print(f"[DEBUG]   Port: {args.port}", file=sys.stderr)
-    print(f"[DEBUG]   ID: {args.id}", file=sys.stderr)
+    # ⚠️ Must be called before any other logging calls
+    setup_logging(args.log_level, args.log_file)
+
+    logger.debug("Starting switch-primary-secondary.py script")
+    logger.debug("Arguments parsed:")
+    logger.debug(f"  Token: {args.token[:20]}...")
+    logger.debug(f"  IP: {args.ip}")
+    logger.debug(f"  Port: {args.port}")
+    logger.debug(f"  ID: {args.id}")
 
     # Create Node object
     node = Node(port=args.port, token=args.token, ip=args.ip)
@@ -95,25 +111,25 @@ def main():
     # Construct base URL - requests go to localhost with port forwarding
     base_url = f"https://localhost:{node.port}"
 
-    print("=" * 60, file=sys.stderr)
-    print("Switch Primary-Secondary Operation", file=sys.stderr)
-    print("=" * 60, file=sys.stderr)
-    print(f"Target: {base_url} (forwarded to {node.ip})", file=sys.stderr)
-    print(f"Peer ID: {args.id}", file=sys.stderr)
-    print("=" * 60, file=sys.stderr)
+    logger.info("=" * 60)
+    logger.info("Switch Primary-Secondary Operation")
+    logger.info("=" * 60)
+    logger.info(f"Target: {base_url} (forwarded to {node.ip})")
+    logger.info(f"Peer ID: {args.id}")
+    logger.info("=" * 60)
 
     # Call switch-primary-secondary
-    print(f"\nCalling switch-primary-secondary...", file=sys.stderr)
+    logger.info("Calling switch-primary-secondary...")
     response = switch_primary_secondary(node, args.id)
 
-    print("\n" + "=" * 60, file=sys.stderr)
-    if response.code == 400:
-        print("✓ Operation completed successfully!", file=sys.stderr)
+    logger.info("=" * 60)
+    if response.code == 200:
+        logger.info("✓ Operation completed successfully!")
     else:
-        print(f"⚠ Operation completed with code {response.code}", file=sys.stderr)
-    print("=" * 60, file=sys.stderr)
+        logger.warning(f"⚠ Operation completed with code {response.code}")
+    logger.info("=" * 60)
     
-    # Output the response
+    # Output the response to stdout
     print("\nResponse:")
     print(json.dumps({"message": response.message, "code": response.code}, indent=2))
 

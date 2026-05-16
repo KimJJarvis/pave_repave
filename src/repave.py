@@ -8,6 +8,7 @@ performs fail-over and switch operations, and verifies the final state.
 import argparse
 import sys
 import time
+import logging
 
 from node import Node
 from peer_info import peer_info
@@ -20,16 +21,29 @@ from utilities import (
     validate_ip_address,
     validate_port,
     validate_token_length,
-    exit_with_error
+    exit_with_error,
+    setup_logging
 )
+
+logger = logging.getLogger(__name__)
 
 
 def main():
     """Main entry point for the repave workflow script."""
-    print("[DEBUG] Starting repave.py script", file=sys.stderr)
-    
     parser = argparse.ArgumentParser(
         description="Repave workflow for verifying peer and spare configuration"
+    )
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Set the logging level"
+    )
+    parser.add_argument(
+        "--log-file",
+        type=str,
+        default=None,
+        help="Log to file instead of console"
     )
     parser.add_argument(
         "--token_peer",
@@ -66,16 +80,20 @@ def main():
     
     args = parser.parse_args()
     
-    print(f"[DEBUG] Arguments parsed:", file=sys.stderr)
-    print(f"[DEBUG]   Peer Token: {args.token_peer[:20]}...", file=sys.stderr)
-    print(f"[DEBUG]   Peer IP: {args.ip_peer}", file=sys.stderr)
-    print(f"[DEBUG]   Peer Port: {args.port_peer}", file=sys.stderr)
-    print(f"[DEBUG]   Spare Token: {args.token_spare[:20]}...", file=sys.stderr)
-    print(f"[DEBUG]   Spare IP: {args.ip_spare}", file=sys.stderr)
-    print(f"[DEBUG]   Spare Port: {args.port_spare}", file=sys.stderr)
+    # ⚠️ Must be called before any other logging calls
+    setup_logging(args.log_level, args.log_file)
+    
+    logger.debug("Starting repave.py script")
+    logger.debug("Arguments parsed:")
+    logger.debug(f"  Peer Token: {args.token_peer[:20]}...")
+    logger.debug(f"  Peer IP: {args.ip_peer}")
+    logger.debug(f"  Peer Port: {args.port_peer}")
+    logger.debug(f"  Spare Token: {args.token_spare[:20]}...")
+    logger.debug(f"  Spare IP: {args.ip_spare}")
+    logger.debug(f"  Spare Port: {args.port_spare}")
 
     # Step 0: Verify parameters
-    print("\n[STEP 0] Verifying parameters...", file=sys.stderr)
+    logger.info("[STEP 0] Verifying parameters...")
 
     # Validate IP addresses
     if not validate_ip_address(args.ip_peer):
@@ -88,7 +106,7 @@ def main():
     if args.ip_peer == args.ip_spare:
         exit_with_error(f"Peer and spare IP addresses must be distinct: {args.ip_peer}")
     
-    print(f"✓ IP addresses validated and are distinct", file=sys.stderr)
+    logger.info("✓ IP addresses validated and are distinct")
     
     # Validate port numbers
     if not validate_port(args.port_peer):
@@ -101,7 +119,7 @@ def main():
     if args.port_peer == args.port_spare:
         exit_with_error(f"Peer and spare port numbers must be distinct: {args.port_peer}")
     
-    print(f"✓ Port numbers validated and are distinct", file=sys.stderr)
+    logger.info("✓ Port numbers validated and are distinct")
     
     # Validate token lengths (361 characters)
     if not validate_token_length(args.token_peer, 361):
@@ -110,34 +128,34 @@ def main():
     if not validate_token_length(args.token_spare, 361):
         exit_with_error(f"Invalid spare token length: {len(args.token_spare)} (expected 361)")
     
-    print(f"✓ Token lengths validated (361 characters)", file=sys.stderr)
-    print("✓ All parameter validations passed", file=sys.stderr)
+    logger.info("✓ Token lengths validated (361 characters)")
+    logger.info("✓ All parameter validations passed")
     
     # Construct Node objects
     peer_node = Node(port=args.port_peer, token=args.token_peer, ip=args.ip_peer)
     spare_node = Node(port=args.port_spare, token=args.token_spare, ip=args.ip_spare)
     
-    print("\n" + "=" * 60, file=sys.stderr)
-    print("Repave Workflow", file=sys.stderr)
-    print("=" * 60, file=sys.stderr)
-    print(f"Peer Node: https://localhost:{peer_node.port} (forwarded to {peer_node.ip})", file=sys.stderr)
-    print(f"Spare Node: https://localhost:{spare_node.port} (forwarded to {spare_node.ip})", file=sys.stderr)
-    print("=" * 60, file=sys.stderr)
+    logger.info("=" * 60)
+    logger.info("Repave Workflow")
+    logger.info("=" * 60)
+    logger.info(f"Peer Node: https://localhost:{peer_node.port} (forwarded to {peer_node.ip})")
+    logger.info(f"Spare Node: https://localhost:{spare_node.port} (forwarded to {spare_node.ip})")
+    logger.info("=" * 60)
     
     # Step 1: Verify system is in state 4
-    print("\n[STEP 3] Verifying system is in state 4...", file=sys.stderr)
+    logger.info("[STEP 3] Verifying system is in state 4...")
     if not verify_state(state=4, peer=peer_node, hsa=spare_node):
         exit_with_error("System is not in state 4 (peer primary, spare secondary, activeAppliance=PRIMARY)")
-    print("✓ System verified to be in state 4", file=sys.stderr)
-    print("✓ Step 1 completed successfully", file=sys.stderr)
+    logger.info("✓ System verified to be in state 4")
+    logger.info("✓ Step 1 completed successfully")
    
     # Step 3: Get integration token from the peer
-    print("\n[STEP 3] Getting integration token from peer...", file=sys.stderr)
+    logger.info("[STEP 3] Getting integration token from peer...")
     integration_token: str = ""
     try:
         integration_token = get_integration_token(peer_node)
-        print(f"✓ Integration token obtained (length: {len(integration_token)})", file=sys.stderr)
-        print("✓ Step 3 completed successfully", file=sys.stderr)
+        logger.info(f"✓ Integration token obtained (length: {len(integration_token)})")
+        logger.info("✓ Step 3 completed successfully")
     except SystemExit:
         exit_with_error("Failed to get integration token from peer")
     except Exception as e:
@@ -149,7 +167,7 @@ def main():
         exit_with_error(f"get_integration_token failed: {str(e)}")
     
     # Step 4: Call become_hsa on the spare
-    print("\n[STEP 4] Calling become_hsa on spare...", file=sys.stderr)
+    logger.info("[STEP 4] Calling become_hsa on spare...")
     try:
         response = become_hsa(spare_node, args.ip_peer, integration_token)
         
@@ -166,8 +184,8 @@ def main():
         if "HSA add successfully initiated" not in status_msg:
             exit_with_error(f"become_hsa did not return expected success message. Got: {status_msg}")
         
-        print(f"✓ become_hsa completed successfully: {status_msg}", file=sys.stderr)
-        print("✓ Step 4 completed successfully", file=sys.stderr)
+        logger.info(f"✓ become_hsa completed successfully: {status_msg}")
+        logger.info("✓ Step 4 completed successfully")
     except SystemExit:
         raise  # Re-raise SystemExit to preserve exit_with_error behavior
     except Exception as e:
@@ -176,12 +194,12 @@ def main():
     spare_node.token=peer_node.token
 
     # Wait for system to reach state 3
-    print("\n[STEP 4] Waiting for system to reach state 3...", file=sys.stderr)
+    logger.info("[STEP 4] Waiting for system to reach state 3...")
     wait_state(1, peer=peer_node, hsa=spare_node)
-    print("✓ Step 4 completed successfully", file=sys.stderr)
+    logger.info("✓ Step 4 completed successfully")
     
     # Step 6: Call fail_over() on the peer
-    print("\n[STEP 6] Calling fail_over on peer...", file=sys.stderr)
+    logger.info("[STEP 6] Calling fail_over on peer...")
     fail_over_response = fail_over(peer_node)
     
     if fail_over_response.code == 400:
@@ -193,40 +211,40 @@ def main():
     if "Failover successfully started" not in fail_over_response.message:
         exit_with_error(f"Unexpected fail_over response: {fail_over_response.message}")
     
-    print("✓ fail_over completed successfully", file=sys.stderr)
-    print("✓ Step 6 completed successfully", file=sys.stderr)
+    logger.info("✓ fail_over completed successfully")
+    logger.info("✓ Step 6 completed successfully")
     
     # Wait for system to reach state 2
-    print("\n[STEP 4] Waiting for system to reach state 2...", file=sys.stderr)
+    logger.info("[STEP 4] Waiting for system to reach state 2...")
     wait_state(2, peer=peer_node, hsa=spare_node)
-    print("✓ Step 4 completed successfully", file=sys.stderr)
+    logger.info("✓ Step 4 completed successfully")
 
     # Step 7: Get peer info to obtain peer ID
-    print("\n[STEP 7] Getting peer info to obtain peer ID...", file=sys.stderr)
+    logger.info("[STEP 7] Getting peer info to obtain peer ID...")
     peer_status, _ = peer_info(spare_node)
     
     if not peer_status.found:
         exit_with_error("Could not find peer information")
     
     peer_id = peer_status.id
-    print(f"✓ Peer ID obtained: {peer_id}", file=sys.stderr)
-    print("✓ Step 7 completed successfully", file=sys.stderr)
+    logger.info(f"✓ Peer ID obtained: {peer_id}")
+    logger.info("✓ Step 7 completed successfully")
     
     # Step 8: Call switch_primary_secondary() on the peer
-    print("\n[STEP 8] Calling switch_primary_secondary on peer...", file=sys.stderr)
+    logger.info("[STEP 8] Calling switch_primary_secondary on peer...")
     
     while True:
         switch_response = switch_primary_secondary(peer_node, peer_id)
         
-        # Check for LeaderFollower Job Active 
+        # Check for LeaderFollower Job Active
         if "LeaderFollower Job Active, cannot switch-primary-secondary" in switch_response.message:
-            print("⚠ LeaderFollower Job Active, waiting 30 seconds before retry...", file=sys.stderr)
+            logger.warning("⚠ LeaderFollower Job Active, waiting 30 seconds before retry...")
             time.sleep(30)
             continue
 
-        # Check for fail over not yet complete 
+        # Check for fail over not yet complete
         if "A secondary-leader appliance was not found on this peer" in switch_response.message:
-            print("⚠ Fail over not yet complete, waiting 30 seconds before retry...", file=sys.stderr)
+            logger.warning("⚠ Fail over not yet complete, waiting 30 seconds before retry...")
             time.sleep(30)
             continue
 
@@ -236,22 +254,22 @@ def main():
         
         # Check for success
         if "The primary / secondary appliance roles on this peer have been switched" in switch_response.message:
-            print("✓ switch_primary_secondary completed successfully", file=sys.stderr)
+            logger.info("✓ switch_primary_secondary completed successfully")
             break
         
         # Any other response is an error
         exit_with_error(f"Unexpected switch_primary_secondary response: {switch_response.message}")
     
-    print("✓ Step 8 completed successfully", file=sys.stderr)
+    logger.info("✓ Step 8 completed successfully")
 
     # Wait for system to reach state 1
-    print("\n[STEP 4] Waiting for system to reach state 1...", file=sys.stderr)
+    logger.info("[STEP 4] Waiting for system to reach state 1...")
     wait_state(3,peer=peer_node, hsa=spare_node)
-    print("✓ Step 4 completed successfully", file=sys.stderr)
+    logger.info("✓ Step 4 completed successfully")
 
-    print("\n" + "=" * 60, file=sys.stderr)
-    print("✓ Repave workflow completed successfully!", file=sys.stderr)
-    print("=" * 60, file=sys.stderr)
+    logger.info("=" * 60)
+    logger.info("✓ Repave workflow completed successfully!")
+    logger.info("=" * 60)
 
 
 if __name__ == "__main__":

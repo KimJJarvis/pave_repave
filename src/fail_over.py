@@ -7,10 +7,14 @@ Calls the fail-over endpoint on porta with ipa as the peer IP.
 import argparse
 import sys
 import json
+import logging
 
 from node import Node
 from response import Response
 from make_single_api_request import make_single_api_request
+from utilities import setup_logging
+
+logger = logging.getLogger(__name__)
 
 
 def fail_over(node: Node) -> Response:
@@ -25,7 +29,7 @@ def fail_over(node: Node) -> Response:
     """
     base_url = f"https://localhost:{node.port}"
     url = f"{base_url}/api/v3/cluster-manager/fail-over"
-    print(f"Calling fail-over on {url}...", file=sys.stderr)
+    logger.info(f"Calling fail-over on {url}...")
     
     data = {
         "peerIp": node.ip
@@ -53,16 +57,27 @@ def fail_over(node: Node) -> Response:
         code = http_status
     
     response = Response(message=message, code=code)
-    print(f"✓ fail-over initiated: {response.message} (code: {response.code})", file=sys.stderr)
+    logger.info(f"✓ fail-over initiated: {response.message} (code: {response.code})")
     
     return response
 
 
 def main():
     """Main entry point for the script."""
-    print("[DEBUG] Starting fail-over.py script", file=sys.stderr)
     parser = argparse.ArgumentParser(
         description="Perform fail-over operation using NMS API"
+    )
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Set the logging level"
+    )
+    parser.add_argument(
+        "--log-file",
+        type=str,
+        default=None,
+        help="Log to file instead of console"
     )
     parser.add_argument(
         "--token",
@@ -83,10 +98,14 @@ def main():
     
     args = parser.parse_args()
     
-    print(f"[DEBUG] Arguments parsed:", file=sys.stderr)
-    print(f"[DEBUG]   Token: {args.token[:20]}...", file=sys.stderr)
-    print(f"[DEBUG]   IP: {args.ip}", file=sys.stderr)
-    print(f"[DEBUG]   Port: {args.port}", file=sys.stderr)
+    # ⚠️ Must be called before any other logging calls
+    setup_logging(args.log_level, args.log_file)
+    
+    logger.debug("Starting fail-over.py script")
+    logger.debug("Arguments parsed:")
+    logger.debug(f"  Token: {args.token[:20]}...")
+    logger.debug(f"  IP: {args.ip}")
+    logger.debug(f"  Port: {args.port}")
     
     # Create Node object
     node = Node(port=args.port, token=args.token, ip=args.ip)
@@ -94,25 +113,25 @@ def main():
     # Construct base URL - requests go to localhost with port forwarding
     base_url = f"https://localhost:{node.port}"
     
-    print("=" * 60, file=sys.stderr)
-    print("Fail-Over Operation", file=sys.stderr)
-    print("=" * 60, file=sys.stderr)
-    print(f"Target: {base_url} (forwarded to {node.ip})", file=sys.stderr)
-    print(f"Peer IP: {node.ip}", file=sys.stderr)
-    print("=" * 60, file=sys.stderr)
+    logger.info("=" * 60)
+    logger.info("Fail-Over Operation")
+    logger.info("=" * 60)
+    logger.info(f"Target: {base_url} (forwarded to {node.ip})")
+    logger.info(f"Peer IP: {node.ip}")
+    logger.info("=" * 60)
     
     # Call fail-over
-    print(f"\nCalling fail-over...", file=sys.stderr)
+    logger.info("Calling fail-over...")
     response = fail_over(node)
     
-    print("\n" + "=" * 60, file=sys.stderr)
+    logger.info("=" * 60)
     if response.code == 200:
-        print("✓ Operation completed successfully!", file=sys.stderr)
+        logger.info("✓ Operation completed successfully!")
     else:
-        print(f"⚠ Operation completed with code {response.code}", file=sys.stderr)
-    print("=" * 60, file=sys.stderr)
+        logger.warning(f"⚠ Operation completed with code {response.code}")
+    logger.info("=" * 60)
     
-    # Output the response
+    # Output the response to stdout
     print("\nResponse:")
     print(json.dumps({"message": response.message, "code": response.code}, indent=2))
 
