@@ -67,8 +67,7 @@ def main():
     print(f"[DEBUG]   HSA IP: {args.ip_hsa}", file=sys.stderr)
     print(f"[DEBUG]   HSA Port: {args.port_hsa}", file=sys.stderr)
 
-    # Step 0: Verify parameters
-    print("\n[STEP 1] Verifying parameters...", file=sys.stderr)
+    print("\nVerifying parameters...", file=sys.stderr)
 
     # Validate IP addresses
     if not validate_ip_address(args.ip_peer):
@@ -109,15 +108,12 @@ def main():
     print(f"HSA Node: https://localhost:{hsa_node.port} (forwarded to {hsa_node.ip})", file=sys.stderr)
     print("=" * 60, file=sys.stderr)
     
-    # Step 1,2: Verify system is in state 1
-    print("\n[STEP 3] Verifying system is in state 1...", file=sys.stderr)
+    print("\nVerifying system is in state 1...", file=sys.stderr)
     if not verify_state(1, peer_node, hsa_node):
         exit_with_error("System is not in state 1 (peer primary, hsa secondary, activeAppliance=PRIMARY)")
     print("✓ System verified to be in state 1", file=sys.stderr)
-    print("✓ Step 3 completed successfully", file=sys.stderr)
     
-    # Step 3: Call fail_over() on the peer
-    print("\n[STEP 3] Calling fail_over on peer...", file=sys.stderr)
+    print("\nCalling fail_over on peer...", file=sys.stderr)
     fail_over_response = fail_over(peer_node)
     
     if fail_over_response.code == 400:
@@ -131,13 +127,11 @@ def main():
     
     print("✓ fail_over completed successfully", file=sys.stderr)
     
-    # Wait for system to reach state 2
-    print("\n[STEP 4] Waiting for system to reach state 2...", file=sys.stderr)
+    print("\nWaiting for system to reach state 2...", file=sys.stderr)
     wait_state(2, peer_node, hsa_node)
-    print("✓ Step 4 completed successfully", file=sys.stderr)
+    print("✓ System verified to be in state 2", file=sys.stderr)
 
-    # Step 5: Get peer info to obtain peer ID
-    print("\n[STEP 4] Getting peer info to obtain peer ID...", file=sys.stderr)
+    print("\nGetting peer info to obtain peer ID...", file=sys.stderr)
     peer_status, _ = peer_info(peer_node)
     
     if not peer_status.found:
@@ -146,9 +140,7 @@ def main():
     peer_id = peer_status.id
     print(f"✓ Peer ID obtained: {peer_id}", file=sys.stderr)
     
-    # Step 5: Call switch_primary_secondary() on the peer
-    print("\n[STEP 5] Calling switch_primary_secondary on peer...", file=sys.stderr)
-    
+    print("\nCalling switch_primary_secondary on peer...", file=sys.stderr)
     while True:
         switch_response = switch_primary_secondary(peer_node, peer_id)        
         
@@ -176,29 +168,25 @@ def main():
         # Any other response is an error
         exit_with_error(f"Unexpected switch_primary_secondary response: {switch_response.message}")
 
-    # Wait for system to reach state 3
-    print("\n[STEP 4] Waiting for system to reach state 3...", file=sys.stderr)
+    print("\nWaiting for system to reach state 3...", file=sys.stderr)
     wait_state(3, peer_node, hsa_node)
-    print("✓ Step 5.1 completed successfully", file=sys.stderr)
+    print("✓ System verified to be in state 3", file=sys.stderr)
 
-    # Step 6: Get integration token from the peer
-    print("\n[STEP 6] Getting integration token from peer...", file=sys.stderr)
+    print("\nGet integration token from peer...", file=sys.stderr)
     integration_token = get_integration_token(hsa_node)
       
     print(f"✓ Integration token obtained (length: {len(integration_token)})", file=sys.stderr)
     
-    # Step 7: Call leave_cluster_hsa from the HSA
-    print("\n[STEP 7] Calling leave_cluster_hsa on HSA...", file=sys.stderr)
+    print("\nCalling leave_cluster_hsa on HSA...", file=sys.stderr)
     try:
         leave_cluster_hsa(peer_node, integration_token)
         print("✓ leave_cluster_hsa completed successfully", file=sys.stderr)
     except Exception as e:
         exit_with_error(f"leave_cluster_hsa failed: {str(e)}")
     
-    # Wait for system to reach state 4
-    print("\n[STEP 4] Waiting for system to reach state 4...", file=sys.stderr)
+    print("\nWaiting for system to reach state 4...", file=sys.stderr)
     wait_state(4, peer_node, hsa_node)
-    print("✓ Step 6.1 completed successfully", file=sys.stderr)
+    print("✓ System verified to be in state 4", file=sys.stderr)
 
     print("\n" + "=" * 60, file=sys.stderr)
     print("✓ Pave workflow completed successfully!", file=sys.stderr)

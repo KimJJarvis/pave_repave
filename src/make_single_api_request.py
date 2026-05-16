@@ -82,7 +82,7 @@ def make_single_api_request(
         with urllib.request.urlopen(request, context=ssl_context, timeout=30) as response:
             print(f"[DEBUG] Response status: {response.status}", file=sys.stderr)
             response_data = response.read().decode('utf-8')
-            print(f"[DEBUG] Response data: {response_data}", file=sys.stderr)
+            # print(f"[DEBUG] Response data: {response_data}", file=sys.stderr)
             return json.loads(response_data)
                     
     except urllib.error.HTTPError as e:
