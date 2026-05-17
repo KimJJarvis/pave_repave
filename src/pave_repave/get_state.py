@@ -53,10 +53,10 @@ def which_state(peer: Node, other: Node) -> int:
     other_check_other = Node(port=other.port, token=other.token, ip=other.ip)
     other_status_on_other = peer_info(node=other_check_other)
 
-    logger.debug(f"peer_status_on_peer: {peer_status_on_peer}")
-    logger.debug(f"other_status_on_peer: {other_status_on_peer}")
-    logger.debug(f"peer_status_on_other: {peer_status_on_other}")
-    logger.debug(f"other_status_on_other: {other_status_on_other}")
+    logger.info(f"peer_status_on_peer: {peer_status_on_peer}")
+    logger.info(f"other_status_on_peer: {other_status_on_peer}")
+    logger.info(f"peer_status_on_other: {peer_status_on_other}")
+    logger.info(f"other_status_on_other: {other_status_on_other}")
 
 
     # Check for State 5: Peer standalone, Other Initialised
@@ -226,7 +226,7 @@ def wait_state(state: int, peer: Node, other: Node) -> None:
 def main():
     """Main entry point for the get_state script."""
     parser = argparse.ArgumentParser(
-        description="Get state of peer and Other configuration"
+        description="Calls the gRPC endpoint api.v3.peers on the peer node and another node."
     )
     parser.add_argument(
         "--log-level",
@@ -257,80 +257,20 @@ def main():
     # ⚠️ Must be called before any other logging calls
     setup_logging(args.log_level, args.log_file)
 
-    logger.debug("Starting get_state.py script")
-    logger.debug("Arguments parsed:")
-    logger.debug(f"  Peer Token: {args.token_peer[:20]}...")
-    logger.debug(f"  Peer IP: {args.ip_peer}")
-    logger.debug(f"  Peer Port: {args.port_peer}")
-    logger.debug(f"  Other Token: {args.token_other[:20]}...")
-    logger.debug(f"  Other IP: {args.ip_other}")
-    logger.debug(f"  Other Port: {args.port_other}")
-
-    # Step 0: Verify parameters (same as repave.py)
-    logger.info("[STEP 0] Verifying parameters...")
-
-    # Validate IP addresses
-    if not validate_ip_address(args.ip_peer):
-        exit_with_error(f"Invalid peer IP address: {args.ip_peer}")
-
-    if not validate_ip_address(args.ip_other):
-        exit_with_error(f"Invalid Other IP address: {args.ip_other}")
+    # Construct Node objects
+    peer_node = Node(port=args.port_peer, token=args.token_peer, ip=args.ip_peer)
+    other_node = Node(port=args.port_other, token=args.token_other, ip=args.ip_other)
 
     # Verify IPs are distinct
     if args.ip_peer == args.ip_other:
         exit_with_error(f"Peer and Other IP addresses must be distinct: {args.ip_peer}")
 
-    logger.info("✓ IP addresses validated and are distinct")
-
-    # Validate port numbers
-    if not validate_port(args.port_peer):
-        exit_with_error(f"Invalid peer port number: {args.port_peer} (must be 0-65535)")
-
-    if not validate_port(args.port_other):
-        exit_with_error(f"Invalid Other port number: {args.port_other} (must be 0-65535)")
-
     # Verify ports are distinct
     if args.port_peer == args.port_other:
         exit_with_error(f"Peer and Other port numbers must be distinct: {args.port_peer}")
 
-    logger.info("✓ Port numbers validated and are distinct")
-
-    # Validate token lengths (361 characters)
-    if not validate_token_length(args.token_peer, 361):
-        exit_with_error(
-            f"Invalid peer token length: {len(args.token_peer)} (expected 361)"
-        )
-
-    if not validate_token_length(args.token_other, 361):
-        exit_with_error(
-            f"Invalid Other token length: {len(args.token_other)} (expected 361)"
-        )
-
-    logger.info("✓ Token lengths validated (361 characters)")
-    logger.info("✓ All parameter validations passed")
-
-    # Construct Node objects
-    peer_node = Node(port=args.port_peer, token=args.token_peer, ip=args.ip_peer)
-    other_node = Node(port=args.port_other, token=args.token_other, ip=args.ip_other)
-
-    logger.info("=" * 60)
-    logger.info("Get State")
-    logger.info("=" * 60)
-    logger.info(
-        f"Peer Node: https://localhost:{peer_node.port} (forwarded to {peer_node.ip})"
-    )
-    logger.info(
-        f"Other Node: https://localhost:{other_node.port} (forwarded to {other_node.ip})"
-    )
-    logger.info("=" * 60)
-
     # Determine and print the current state
-    logger.info("Determining current state...")
     current_state = which_state(peer=peer_node, other=other_node)
-
-    logger.info("=" * 60)
-    logger.info(f"Current State: {current_state}")
-    logger.info("=" * 60)
 
     # Print state to console (stdout)
     print(current_state)

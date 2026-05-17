@@ -27,81 +27,14 @@ from pave_repave.utilities import (
 logger = logging.getLogger(__name__)
 
 
-def main():
-    """Main entry point for the fused workflow script."""
-    parser = argparse.ArgumentParser(
-        description="Fused workflow for fail-over and cluster operations"
-    )
-    parser.add_argument(
-        "--log-level",
-        default="INFO",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Set the logging level",
-    )
-    parser.add_argument(
-        "--log-file", type=str, default=None, help="Log to file instead of console"
-    )
-    parser.add_argument("--ip_peer", required=True, help="IP address of the peer node")
-    parser.add_argument(
-        "--token_peer", required=True, help="Bearer token for peer authentication"
-    )
-    parser.add_argument(
-        "--port_peer", required=True, type=int, help="Port number for peer node"
-    )
-    parser.add_argument("--ip_hsa", required=True, help="IP address of the HSA node")
-    parser.add_argument(
-        "--port_hsa", required=True, type=int, help="Port number for HSA node"
-    )
-
-    args = parser.parse_args()
-
-    # ⚠️ Must be called before any other logging calls
-    setup_logging(args.log_level, args.log_file)
-
-    logger.debug("Starting pave.py script")
-    logger.debug("Arguments parsed:")
-    logger.debug(f"  Peer IP: {args.ip_peer}")
-    logger.debug(f"  Peer Token: {args.token_peer[:20]}...")
-    logger.debug(f"  Peer Port: {args.port_peer}")
-    logger.debug(f"  HSA IP: {args.ip_hsa}")
-    logger.debug(f"  HSA Port: {args.port_hsa}")
-
-    logger.info("Verifying parameters...")
-
-    # Validate IP addresses
-    if not validate_ip_address(args.ip_peer):
-        exit_with_error(f"Invalid peer IP address: {args.ip_peer}")
-
-    if not validate_ip_address(args.ip_hsa):
-        exit_with_error(f"Invalid HSA IP address: {args.ip_hsa}")
-
-    # Verify IPs are distinct
-    if args.ip_peer == args.ip_hsa:
-        exit_with_error(f"Peer and HSA IP addresses must be distinct: {args.ip_peer}")
-
-    # Validate port numbers
-    if not validate_port(args.port_peer):
-        exit_with_error(f"Invalid peer port number: {args.port_peer} (must be 0-65535)")
-
-    if not validate_port(args.port_hsa):
-        exit_with_error(f"Invalid HSA port number: {args.port_hsa} (must be 0-65535)")
-
-    # Verify ports are distinct
-    if args.port_peer == args.port_hsa:
-        exit_with_error(f"Peer and HSA port numbers must be distinct: {args.port_peer}")
-
-    # Validate token length
-    if not validate_token_length(args.token_peer, 361):
-        exit_with_error(
-            f"Invalid peer token length: {len(args.token_peer)} (expected 361)"
-        )
-
-    logger.info("✓ All validations passed")
-
-    # Construct Node objects
-    peer_node = Node(port=args.port_peer, token=args.token_peer, ip=args.ip_peer)
-    hsa_node = Node(port=args.port_hsa, token=args.token_peer, ip=args.ip_hsa)
-
+def pave(peer_node: Node, hsa_node: Node):
+    """
+    Execute the pave workflow to replace a peer in a NMS cluster.
+    
+    Args:
+        peer_node: Node object representing the peer node
+        hsa_node: Node object representing the HSA node
+    """
     logger.info("=" * 60)
     logger.info("Pave Workflow")
     logger.info("=" * 60)
@@ -212,6 +145,74 @@ def main():
     wait_state(state=4, peer=peer_node, other=hsa_node)
     logger.info("✓ System verified to be in state 4")
 
-    logger.info("=" * 60)
-    logger.info("✓ Pave workflow completed successfully!")
-    logger.info("=" * 60)
+
+
+def main():
+    """Main entry point for the fused workflow script."""
+    parser = argparse.ArgumentParser(
+        description="The Pave Proceedure replaces a peer in a NMS cluster"
+    )
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Set the logging level",
+    )
+    parser.add_argument(
+        "--log-file", type=str, default=None, help="Log to file instead of console"
+    )
+    parser.add_argument("--ip_peer", required=True, help="IP address of the peer node (dot format)")
+    parser.add_argument(
+        "--token_peer", required=True, help="Bearer token for peer authentication"
+    )
+    parser.add_argument(
+        "--port_peer", required=True, type=int, help="Port number for peer node"
+    )
+    parser.add_argument("--ip_hsa", required=True, help="IP address of the HSA node (dot format)")
+    parser.add_argument(
+        "--port_hsa", required=True, type=int, help="Port number for HSA node"
+    )
+
+    args = parser.parse_args()
+
+    # ⚠️ Must be called before any other logging calls
+    setup_logging(args.log_level, args.log_file)
+
+    # Validate IP addresses
+    if not validate_ip_address(args.ip_peer):
+        exit_with_error(f"Invalid peer IP address: {args.ip_peer}")
+
+    if not validate_ip_address(args.ip_hsa):
+        exit_with_error(f"Invalid HSA IP address: {args.ip_hsa}")
+
+    # Verify IPs are distinct
+    if args.ip_peer == args.ip_hsa:
+        exit_with_error(f"Peer and HSA IP addresses must be distinct: {args.ip_peer}")
+
+    # Validate port numbers
+    if not validate_port(args.port_peer):
+        exit_with_error(f"Invalid peer port number: {args.port_peer} (must be 0-65535)")
+
+    if not validate_port(args.port_hsa):
+        exit_with_error(f"Invalid HSA port number: {args.port_hsa} (must be 0-65535)")
+
+    # Verify ports are distinct
+    if args.port_peer == args.port_hsa:
+        exit_with_error(f"Peer and HSA port numbers must be distinct: {args.port_peer}")
+
+    # Validate token length
+    if not validate_token_length(args.token_peer, 361):
+        exit_with_error(
+            f"Invalid peer token length: {len(args.token_peer)} (expected 361)"
+        )
+
+    # Construct Node objects
+    peer_node = Node(port=args.port_peer, token=args.token_peer, ip=args.ip_peer)
+    hsa_node = Node(port=args.port_hsa, token=args.token_peer, ip=args.ip_hsa)
+
+    # Call the pave function with validated Node objects
+    pave(peer_node=peer_node, hsa_node=hsa_node)
+
+    print("=" * 60)
+    print("✓ Pave workflow completed successfully!")
+    print("=" * 60)

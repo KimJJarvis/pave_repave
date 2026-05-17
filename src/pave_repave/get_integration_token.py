@@ -43,7 +43,7 @@ def get_integration_token(node: Node) -> str:
 
 def main():
     """Main entry point for the script."""
-    parser = argparse.ArgumentParser(description="Get integration token from NMS API")
+    parser = argparse.ArgumentParser(description="Calls the gRPC endpoint api.v3.cluster-orchestrator.integration-token on a  node.")
     parser.add_argument(
         "--log-level",
         default="INFO",
@@ -56,8 +56,8 @@ def main():
     parser.add_argument(
         "--token", required=True, help="Bearer token for authentication"
     )
-    parser.add_argument("--ip", required=True, help="IP address")
-    parser.add_argument("--port", required=True, type=int, help="Port number for host")
+    parser.add_argument("--ip_peer", required=True, help="IP address of peer (dot format)")
+    parser.add_argument("--port_peer", required=True, type=int, help="Port number for peer")
 
     args = parser.parse_args()
 

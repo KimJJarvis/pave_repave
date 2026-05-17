@@ -28,101 +28,15 @@ from pave_repave.utilities import (
 logger = logging.getLogger(__name__)
 
 
-def main():
-    """Main entry point for the repave workflow script."""
-    parser = argparse.ArgumentParser(
-        description="Repave workflow for verifying peer and spare configuration"
-    )
-    parser.add_argument(
-        "--log-level",
-        default="INFO",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Set the logging level",
-    )
-    parser.add_argument(
-        "--log-file", type=str, default=None, help="Log to file instead of console"
-    )
-    parser.add_argument(
-        "--token_peer", required=True, help="Bearer token for peer authentication"
-    )
-    parser.add_argument("--ip_peer", required=True, help="IP address of the peer node")
-    parser.add_argument(
-        "--port_peer", required=True, type=int, help="Port number for peer node"
-    )
-    parser.add_argument(
-        "--token_spare", required=True, help="Bearer token for spare authentication"
-    )
-    parser.add_argument(
-        "--ip_spare", required=True, help="IP address of the spare node"
-    )
-    parser.add_argument(
-        "--port_spare", required=True, type=int, help="Port number for spare node"
-    )
-
-    args = parser.parse_args()
-
-    # ⚠️ Must be called before any other logging calls
-    setup_logging(args.log_level, args.log_file)
-
-    logger.debug("Starting repave.py script")
-    logger.debug("Arguments parsed:")
-    logger.debug(f"  Peer Token: {args.token_peer[:20]}...")
-    logger.debug(f"  Peer IP: {args.ip_peer}")
-    logger.debug(f"  Peer Port: {args.port_peer}")
-    logger.debug(f"  Spare Token: {args.token_spare[:20]}...")
-    logger.debug(f"  Spare IP: {args.ip_spare}")
-    logger.debug(f"  Spare Port: {args.port_spare}")
-
-    # Step 0: Verify parameters
-    logger.info("[STEP 0] Verifying parameters...")
-
-    # Validate IP addresses
-    if not validate_ip_address(args.ip_peer):
-        exit_with_error(f"Invalid peer IP address: {args.ip_peer}")
-
-    if not validate_ip_address(args.ip_spare):
-        exit_with_error(f"Invalid spare IP address: {args.ip_spare}")
-
-    # Verify IPs are distinct
-    if args.ip_peer == args.ip_spare:
-        exit_with_error(f"Peer and spare IP addresses must be distinct: {args.ip_peer}")
-
-    logger.info("✓ IP addresses validated and are distinct")
-
-    # Validate port numbers
-    if not validate_port(args.port_peer):
-        exit_with_error(f"Invalid peer port number: {args.port_peer} (must be 0-65535)")
-
-    if not validate_port(args.port_spare):
-        exit_with_error(
-            f"Invalid spare port number: {args.port_spare} (must be 0-65535)"
-        )
-
-    # Verify ports are distinct
-    if args.port_peer == args.port_spare:
-        exit_with_error(
-            f"Peer and spare port numbers must be distinct: {args.port_peer}"
-        )
-
-    logger.info("✓ Port numbers validated and are distinct")
-
-    # Validate token lengths (361 characters)
-    if not validate_token_length(args.token_peer, 361):
-        exit_with_error(
-            f"Invalid peer token length: {len(args.token_peer)} (expected 361)"
-        )
-
-    if not validate_token_length(args.token_spare, 361):
-        exit_with_error(
-            f"Invalid spare token length: {len(args.token_spare)} (expected 361)"
-        )
-
-    logger.info("✓ Token lengths validated (361 characters)")
-    logger.info("✓ All parameter validations passed")
-
-    # Construct Node objects
-    peer_node = Node(port=args.port_peer, token=args.token_peer, ip=args.ip_peer)
-    spare_node = Node(port=args.port_spare, token=args.token_spare, ip=args.ip_spare)
+def repave(peer_node: Node, spare_node: Node, ip_peer: str) -> None:
+    """
+    Execute the repave workflow.
+    
+    Args:
+        peer_node: Node object for the peer
+        spare_node: Node object for the spare
+        ip_peer: IP address of the peer node (used for cluster integration)
+    """
 
     logger.info("=" * 60)
     logger.info("Repave Workflow")
@@ -161,7 +75,7 @@ def main():
 
     logger.info("Calling become_hsa on spare...")
     try:
-        response = become_hsa(node=spare_node, ip_cluster=args.ip_peer, integration_token=integration_token)
+        response = become_hsa(node=spare_node, ip_peer=ip_peer, integration_token=integration_token)
 
         # Check for HTTP status code 200
         http_status = response.get(
@@ -274,6 +188,61 @@ def main():
     wait_state(state=3, peer=peer_node, other=spare_node)
     logger.info("✓ System verified to be in state 3")    
 
-    logger.info("=" * 60)
-    logger.info("✓ Repave workflow completed successfully!")
-    logger.info("=" * 60)
+ 
+
+
+def main():
+    """Main entry point for the repave workflow script."""
+    parser = argparse.ArgumentParser(
+        description="The Repave Proceedure ensures high availability for a peer in a NMS cluster."
+    )
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Set the logging level",
+    )
+    parser.add_argument(
+        "--log-file", type=str, default=None, help="Log to file instead of console"
+    )
+    parser.add_argument(
+        "--token_peer", required=True, help="Bearer token for peer authentication"
+    )
+    parser.add_argument("--ip_peer", required=True, help="IP address of the peer node (dot format)")
+    parser.add_argument(
+        "--port_peer", required=True, type=int, help="Port number for peer node"
+    )
+    parser.add_argument(
+        "--token_spare", required=True, help="Bearer token for spare authentication"
+    )
+    parser.add_argument(
+        "--ip_spare", required=True, help="IP address of the spare node (dot format)"
+    )
+    parser.add_argument(
+        "--port_spare", required=True, type=int, help="Port number for spare node"
+    )
+
+    args = parser.parse_args()
+
+    # ⚠️ Must be called before any other logging calls
+    setup_logging(args.log_level, args.log_file)
+
+    # Construct Node objects
+    peer_node = Node(port=args.port_peer, token=args.token_peer, ip=args.ip_peer)
+    spare_node = Node(port=args.port_spare, token=args.token_spare, ip=args.ip_spare)
+
+    # Verify IPs are distinct
+    if args.ip_peer == args.ip_spare:
+        exit_with_error(f"Peer and spare IP addresses must be distinct: {args.ip_peer}")
+
+    # Verify ports are distinct
+    if args.port_peer == args.port_spare:
+        exit_with_error(
+            f"Peer and spare port numbers must be distinct: {args.port_peer}"
+        )
+
+    # Execute the repave workflow
+    repave(peer_node=peer_node, spare_node=spare_node, ip_peer=args.ip_peer)
+    
+    print("✓ Repave workflow completed successfully!")
+

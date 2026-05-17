@@ -27,6 +27,7 @@ def peer_info(node: Node) -> Status | None:
     Returns:
         Status object with peer information, or None if not found
     """
+    logger.debug(f"peer_info called with node: ip={node.ip}, port={node.port}, token={'***' if node.token else None}")
     base_url = f"https://localhost:{node.port}"
     url = f"{base_url}/api/v3/peers?activeAppliance=ALL&disabled=MATCH_ALL&master=MATCH_ALL"
 
@@ -48,7 +49,7 @@ def peer_info(node: Node) -> Status | None:
 
         # Search through the peers list to find a match with the target IP
         target_ip = node.ip
-        logger.debug(f"Searching for peer matching target IP: {target_ip}")
+        logger.info(f"Searching for peer matching target IP: {target_ip}")
 
         for peer in peers:
             # Validate required fields are present
@@ -100,7 +101,7 @@ def peer_info(node: Node) -> Status | None:
 def main():
     """Main entry point for the script."""
     parser = argparse.ArgumentParser(
-        description="Query peer information from NMS API v3/peers endpoint"
+        description="Calls the gRPC endpoint api.v3.peers on the node."
     )
     parser.add_argument(
         "--log-level",
@@ -114,48 +115,26 @@ def main():
     parser.add_argument(
         "--token", required=True, help="Bearer token for authentication"
     )
-    parser.add_argument("--ip", required=True, help="IP address")
-    parser.add_argument("--port", required=True, type=int, help="Port number for host")
+    parser.add_argument("--ip", required=True, help="IP address of the node (in dot format)")
+    parser.add_argument("--port", required=True, type=int, help="Port number of the node")
 
     args = parser.parse_args()
 
     # ⚠️ Must be called before any other logging calls
     setup_logging(args.log_level, args.log_file)
 
-    logger.debug("Starting peer-info.py script")
-    logger.debug("Arguments parsed:")
-    logger.debug(f"  Token: {args.token[:20]}...")
-    logger.debug(f"  IP: {args.ip}")
-    logger.debug(f"  Port: {args.port}")
-
     # Create Node object
     node = Node(port=args.port, token=args.token, ip=args.ip)
-
-    logger.info("=" * 60)
-    logger.info("Peer Info Query (v3/peers)")
-    logger.info("=" * 60)
-    logger.info(f"Target: https://localhost:{node.port} (forwarded to {node.ip})")
-    logger.info("=" * 60)
 
     # Get peer info
     status = peer_info(node=node)
 
-    logger.info("=" * 60)
-    logger.info("✓ Query completed successfully!")
-    logger.info("=" * 60)
-
-    # Also output the parsed status for reference to stderr via logger
-    logger.info("=" * 60)
+    # Print parsed status to console (stdout)
     if status is None:
-        logger.info("Not found")
-        logger.info("=" * 60)
-        
-        # Print to console (stdout)
         print("\n" + "=" * 60)
         print("Not found")
         print("=" * 60)
     else:
-        logger.info("Parsed Peer Info Status:")
         parsed_status = json.dumps(
             {
                 "active_appliance": status.active_appliance,
@@ -165,10 +144,6 @@ def main():
             },
             indent=2,
         )
-        logger.info(parsed_status)
-        logger.info("=" * 60)
-        
-        # Print parsed status to console (stdout)
         print("\n" + "=" * 60)
         print("Parsed Peer Info Status:")
         print(parsed_status)

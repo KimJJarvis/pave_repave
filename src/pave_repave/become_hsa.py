@@ -16,13 +16,13 @@ from pave_repave.utilities import setup_logging
 logger = logging.getLogger(__name__)
 
 
-def become_hsa(node: Node, ip_cluster: str, integration_token: str) -> dict:
+def become_hsa(node: Node, ip_peer: str, integration_token: str) -> dict:
     """
     Call the become-hsa endpoint.
 
     Args:
         node: Node object with connection details
-        ip_cluster: Cluster IP address (primary IP)
+        ip_peer: Peer IP address (primary IP)
         integration_token: Integration token
 
     Returns:
@@ -31,13 +31,23 @@ def become_hsa(node: Node, ip_cluster: str, integration_token: str) -> dict:
     Raises:
         SystemExit: If the API returns HTTP 400 or other error status
     """
+    # Log parameters
+    logger.info(f"become_hsa called with parameters:")
+    logger.info(f"  node.ip: {node.ip}")
+    logger.info(f"  node.port: {node.port}")
+    logger.info(f"  ip_peer: {ip_peer}")
+    logger.info(f"  integration_token: {integration_token[:20]}..." if len(integration_token) > 20 else f"  integration_token: {integration_token}")
+    
     base_url = f"https://localhost:{node.port}"
     url = f"{base_url}/api/v3/cluster-orchestrator/become-hsa"
     logger.info(f"Calling become-hsa on {url}...")
 
-    data = {"primaryIp": ip_cluster, "secondaryIp": node.ip, "token": integration_token}
+    data = {"primaryIp": ip_peer, "secondaryIp": node.ip, "token": integration_token}
 
     response = make_single_api_request(url=url, bearer_token=node.token, method="POST", data=data)
+    
+    # Log response object
+    logger.info(f"become_hsa response: {json.dumps(response, indent=2)}")
     
     # Check for HTTP error status codes
     if "_http_status_code" in response:
@@ -55,7 +65,7 @@ def become_hsa(node: Node, ip_cluster: str, integration_token: str) -> dict:
 
 def main():
     """Main entry point for the script."""
-    parser = argparse.ArgumentParser(description="Become an HSA using NMS API")
+    parser = argparse.ArgumentParser(description="Calls the gRPC endpoint api.v3.cluster-orchestrator.become-hsa on a spare node.")
     parser.add_argument(
         "--log-level",
         default="INFO",
@@ -66,12 +76,12 @@ def main():
         "--log-file", type=str, default=None, help="Log to file instead of console"
     )
     parser.add_argument(
-        "--token", required=True, help="Bearer token for authentication"
+        "--token_spare", required=True, help="Bearer token for authentication on spare node"
     )
-    parser.add_argument("--ip", required=True, help="Secondary IP address (dot format)")
-    parser.add_argument("--port", required=True, type=int, help="Port number for host")
+    parser.add_argument("--ip_spare", required=True, help="IP address of the spare node (dot format)")
+    parser.add_argument("--port_spare", required=True, type=int, help="Port number of the spare node")
     parser.add_argument(
-        "--ip_cluster", required=True, help="Primary/Cluster IP address (dot format)"
+        "--ip_peer", required=True, help="Primary/Peer IP address in the cluster (dot format)"
     )
     parser.add_argument("--integration_token", required=True, help="Integration token")
 
@@ -80,36 +90,10 @@ def main():
     # ⚠️ Must be called before any other logging calls
     setup_logging(args.log_level, args.log_file)
 
-    logger.debug("Starting become-hsa.py script")
-    logger.debug("Arguments parsed:")
-    logger.debug(f"  Token: {args.token[:20]}...")
-    logger.debug(f"  IP: {args.ip}")
-    logger.debug(f"  Port: {args.port}")
-    logger.debug(f"  Cluster IP: {args.ip_cluster}")
-    logger.debug(f"  Integration Token: {args.integration_token[:20]}...")
-
     # Create Node object
-    node = Node(port=args.port, token=args.token, ip=args.ip)
-
-    # Construct base URL - requests go to localhost with port forwarding
-    base_url = f"https://localhost:{node.port}"
-
-    logger.info("=" * 60)
-    logger.info("Become HSA Workflow")
-    logger.info("=" * 60)
-    logger.info(f"Node: {base_url} (forwarded to {node.ip})")
-    logger.info(f"Cluster IP: {args.ip_cluster}")
-    logger.info("=" * 60)
+    node = Node(port=args.port_spare, token=args.token_spare, ip=args.ip_spare)
 
     # Call become-hsa
-    logger.info("Calling become-hsa...")
-    response = become_hsa(node=node, ip_cluster=args.ip_cluster, integration_token=args.integration_token)
+    response = become_hsa(node=node, ip_peer=args.ip_peer, integration_token=args.integration_token)
 
-    # Log the response as an info message
-    logger.info("\nResponse:")
-    logger.info(json.dumps(response, indent=2))
-
-    logger.info("=" * 60)
-    logger.info("✓ Operation completed successfully!")
     print("✓ Operation completed successfully!")
-    logger.info("=" * 60)

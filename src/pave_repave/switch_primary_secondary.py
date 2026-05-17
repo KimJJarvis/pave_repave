@@ -79,7 +79,7 @@ def switch_primary_secondary(node: Node, id: int) -> Response:
 def main():
     """Main entry point for the script."""
     parser = argparse.ArgumentParser(
-        description="Perform switch-primary-secondary operation using NMS API"
+        description="Calls the gRPC endpoint api.v3.cluster-manager.switch-primary-secondary on a peer node."
     )
     parser.add_argument(
         "--log-level",
@@ -95,48 +95,22 @@ def main():
         required=True,
         help="Bearer token for authentication",
     )
-    parser.add_argument("--ip", required=True, help="IP address")
-    parser.add_argument("--port", required=True, type=int, help="Port number for host")
-    parser.add_argument("--id", required=True, type=int, help="Peer ID")
+    parser.add_argument("--ip_peer", required=True, help="IP address of the peer (dot format)")
+    parser.add_argument("--port_peer", required=True, type=int, help="Port number of the peer")
+    parser.add_argument("--id", required=True, type=int, help="ID of the peer in the peers table")
 
     args = parser.parse_args()
 
     # ⚠️ Must be called before any other logging calls
     setup_logging(args.log_level, args.log_file)
 
-    logger.debug("Starting switch-primary-secondary.py script")
-    logger.debug("Arguments parsed:")
-    logger.debug(f"  Token: {args.token[:20]}...")
-    logger.debug(f"  IP: {args.ip}")
-    logger.debug(f"  Port: {args.port}")
-    logger.debug(f"  ID: {args.id}")
-
     # Create Node object
     node = Node(port=args.port, token=args.token, ip=args.ip)
 
-    # Construct base URL - requests go to localhost with port forwarding
-    base_url = f"https://localhost:{node.port}"
-
-    logger.info("=" * 60)
-    logger.info("Switch Primary-Secondary Operation")
-    logger.info("=" * 60)
-    logger.info(f"Target: {base_url} (forwarded to {node.ip})")
-    logger.info(f"Peer ID: {args.id}")
-    logger.info("=" * 60)
-
     # Call switch-primary-secondary
-    logger.info("Calling switch-primary-secondary...")
     response = switch_primary_secondary(node=node, id=args.id)
 
-    # Log the response as an info message
-    logger.info("\nResponse:")
-    logger.info(json.dumps({"message": response.message, "code": response.code}, indent=2))
-
-    logger.info("=" * 60)
     if response.code == 200:
-        logger.info("✓ Operation completed successfully!")
         print("✓ Operation completed successfully!")
     else:
-        logger.warning(f"⚠ Operation completed with code {response.code}")
         print(f"⚠ Operation completed with code {response.code}")
-    logger.info("=" * 60)
