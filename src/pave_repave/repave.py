@@ -135,22 +135,18 @@ def main():
     )
     logger.info("=" * 60)
 
-    # Step 1: Verify system is in state 4
-    logger.info("[STEP 3] Verifying system is in state 4...")
-    if not verify_state(state=4, peer=peer_node, other=spare_node):
+    logger.info("Verifying system is in state 5...")
+    if not verify_state(state=5, peer=peer_node, other=spare_node):
         exit_with_error(
-            "System is not in state 4 (peer primary, spare secondary, activeAppliance=PRIMARY)"
+            "System is not in state 5 (peer primary, spare secondary, activeAppliance=PRIMARY)"
         )
-    logger.info("✓ System verified to be in state 4")
-    logger.info("✓ Step 1 completed successfully")
+    logger.info("✓ System verified to be in state 5")
 
-    # Step 3: Get integration token from the peer
-    logger.info("[STEP 3] Getting integration token from peer...")
+    logger.info("Getting integration token from peer...")
     integration_token: str = ""
     try:
         integration_token = get_integration_token(node=peer_node)
         logger.info(f"✓ Integration token obtained (length: {len(integration_token)})")
-        logger.info("✓ Step 3 completed successfully")
     except SystemExit:
         exit_with_error("Failed to get integration token from peer")
     except Exception as e:
@@ -163,8 +159,7 @@ def main():
                 )
         exit_with_error(f"get_integration_token failed: {str(e)}")
 
-    # Step 4: Call become_hsa on the spare
-    logger.info("[STEP 4] Calling become_hsa on spare...")
+    logger.info("Calling become_hsa on spare...")
     try:
         response = become_hsa(node=spare_node, ip_cluster=args.ip_peer, integration_token=integration_token)
 
@@ -196,13 +191,11 @@ def main():
 
     spare_node.token = peer_node.token
 
-    # Wait for system to reach state 3
-    logger.info("[STEP 4] Waiting for system to reach state 3...")
+    logger.info("Waiting for system to reach state 1...")
     wait_state(state=1, peer=peer_node, other=spare_node)
-    logger.info("✓ Step 4 completed successfully")
+    logger.info("✓ System verified to be in state 1")
 
-    # Step 6: Call fail_over() on the peer
-    logger.info("[STEP 6] Calling fail_over on peer...")
+    logger.info("Calling fail_over on peer...")
     fail_over_response = fail_over(node=peer_node)
 
     if fail_over_response.code == 400:
@@ -215,27 +208,21 @@ def main():
         exit_with_error(f"Unexpected fail_over response: {fail_over_response.message}")
 
     logger.info("✓ fail_over completed successfully")
-    logger.info("✓ Step 6 completed successfully")
 
-    # Wait for system to reach state 2
-    logger.info("[STEP 4] Waiting for system to reach state 2...")
+    logger.info("Waiting for system to reach state 2...")
     wait_state(state=2, peer=peer_node, other=spare_node)
-    logger.info("✓ Step 4 completed successfully")
+    logger.info("✓ System verified to be in state 2")
 
-    # Step 7: Get peer info to obtain peer ID
     logger.info("[STEP 7] Getting peer info to obtain peer ID...")
-    peer_status, _ = peer_info(node=spare_node)
+    peer_status = peer_info(node=spare_node)
 
-    if not peer_status.found:
+    if peer_status is None:
         exit_with_error("Could not find peer information")
 
     peer_id = peer_status.id
     logger.info(f"✓ Peer ID obtained: {peer_id}")
-    logger.info("✓ Step 7 completed successfully")
 
-    # Step 8: Call switch_primary_secondary() on the peer
-    logger.info("[STEP 8] Calling switch_primary_secondary on peer...")
-
+    logger.info("Calling switch_primary_secondary on peer...")
     while True:
         switch_response = switch_primary_secondary(node=peer_node, id=peer_id)
 
@@ -282,10 +269,10 @@ def main():
 
     logger.info("✓ Step 8 completed successfully")
 
-    # Wait for system to reach state 1
-    logger.info("[STEP 4] Waiting for system to reach state 1...")
+    # Wait for system to reach state 3
+    logger.info("Waiting for system to reach state 3...")
     wait_state(state=3, peer=peer_node, other=spare_node)
-    logger.info("✓ Step 4 completed successfully")
+    logger.info("✓ System verified to be in state 3")    
 
     logger.info("=" * 60)
     logger.info("✓ Repave workflow completed successfully!")

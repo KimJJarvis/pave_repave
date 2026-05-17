@@ -139,9 +139,9 @@ def main():
     logger.info("✓ System verified to be in state 2")
 
     logger.info("Getting peer info to obtain peer ID...")
-    peer_status, _ = peer_info(node=peer_node)
+    peer_status = peer_info(node=peer_node)
 
-    if not peer_status.found:
+    if peer_status is None:
         exit_with_error("Could not find peer information")
 
     peer_id = peer_status.id

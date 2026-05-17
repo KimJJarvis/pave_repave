@@ -41,33 +41,44 @@ def which_state(peer: Node, other: Node) -> int:
     """
     # Get peer info from peer node
     peer_check_peer = Node(port=peer.port, token=peer.token, ip=peer.ip)
-    peer_status_on_peer, _ = peer_info(node=peer_check_peer)
+    peer_status_on_peer = peer_info(node=peer_check_peer)
 
     other_check_peer = Node(port=peer.port, token=peer.token, ip=other.ip)
-    other_status_on_peer, _ = peer_info(node=other_check_peer)
+    other_status_on_peer = peer_info(node=other_check_peer)
 
     # Get peer info from other node
     peer_check_other = Node(port=other.port, token=other.token, ip=peer.ip)
-    peer_status_on_other, _ = peer_info(node=peer_check_other)
+    peer_status_on_other = peer_info(node=peer_check_other)
 
     other_check_other = Node(port=other.port, token=other.token, ip=other.ip)
-    other_status_on_other, _ = peer_info(node=other_check_other)
+    other_status_on_other = peer_info(node=other_check_other)
 
     logger.debug(f"peer_status_on_peer: {peer_status_on_peer}")
     logger.debug(f"other_status_on_peer: {other_status_on_peer}")
     logger.debug(f"peer_status_on_other: {peer_status_on_other}")
     logger.debug(f"other_status_on_other: {other_status_on_other}")
- 
-    # Check for State 4: Peer standalone, Other standalone
-    # Both nodes are standalone with 127.0.0.1 as primary, no secondary, activeAppliance=PRIMARY
-    # Neither node knows about the other's external IP (other_ip not found on peer, peer_ip not found on other)
+
+
+    # Check for State 5: Peer standalone, Other Initialised
     if (
-        peer_status_on_peer.found
+        peer_status_on_peer is not None
         and peer_status_on_peer.primary_ip == peer.ip
         and peer_status_on_peer.secondary_ip == ""
         and peer_status_on_peer.active_appliance == 1
-        and not other_status_on_peer.found
-        and not peer_status_on_other.found
+        and other_status_on_peer is None
+        and other_status_on_other is None
+    ):
+        return 4
+
+
+    # Check for State 4: Peer standalone, Other Separated
+    if (
+        peer_status_on_peer is not None
+        and peer_status_on_peer.primary_ip == peer.ip
+        and peer_status_on_peer.secondary_ip == ""
+        and peer_status_on_peer.active_appliance == 1
+        and other_status_on_peer is None
+        and other_status_on_other is not None
     ):
         return 4
 
@@ -75,22 +86,26 @@ def which_state(peer: Node, other: Node) -> int:
     # Peer: primary_ip is other, secondary_ip is peer, activeAppliance=PRIMARY
     # Other: primary_ip is other, secondary_ip is peer, activeAppliance=PRIMARY
     if (
-        peer_status_on_peer.found
+        peer_status_on_peer is not None
         and peer_status_on_peer.secondary_ip == peer.ip
         and peer_status_on_peer.primary_ip == other.ip
         and peer_status_on_peer.active_appliance == 1
-        and other_status_on_peer.found
+        and other_status_on_peer is not None
         and other_status_on_peer.secondary_ip == peer.ip
         and other_status_on_peer.primary_ip == other.ip
         and other_status_on_peer.active_appliance == 1
-        and peer_status_on_other.found
+        and peer_status_on_other is not None
         and peer_status_on_other.secondary_ip == peer.ip
         and peer_status_on_other.primary_ip == other.ip
         and peer_status_on_other.active_appliance == 1
-        and other_status_on_other.found
+        and other_status_on_other is not None
         and other_status_on_other.secondary_ip == peer.ip
         and other_status_on_other.primary_ip == other.ip
         and other_status_on_other.active_appliance == 1
+        and peer_status_on_peer.id == peer_status_on_other.id
+        and peer_status_on_peer.id == other_status_on_peer.id
+        and peer_status_on_peer.id == other_status_on_other.id
+        and peer_status_on_peer.id > 0
     ):
         return 3
 
@@ -98,22 +113,26 @@ def which_state(peer: Node, other: Node) -> int:
     # Peer: primary_ip is peer, secondary_ip is other, activeAppliance=SECONDARY
     # Other: primary_ip is peer, secondary_ip is other, activeAppliance=SECONDARY
     if (
-        peer_status_on_peer.found
+        peer_status_on_peer is not None
         and peer_status_on_peer.primary_ip == peer.ip
         and peer_status_on_peer.secondary_ip == other.ip
         and peer_status_on_peer.active_appliance == 2
-        and other_status_on_peer.found
+        and other_status_on_peer is not None
         and other_status_on_peer.primary_ip == peer.ip
         and other_status_on_peer.secondary_ip == other.ip
         and other_status_on_peer.active_appliance == 2
-        and peer_status_on_other.found
+        and peer_status_on_other is not None
         and peer_status_on_other.primary_ip == peer.ip
         and peer_status_on_other.secondary_ip == other.ip
         and peer_status_on_other.active_appliance == 2
-        and other_status_on_other.found
+        and other_status_on_other is not None
         and other_status_on_other.primary_ip == peer.ip
         and other_status_on_other.secondary_ip == other.ip
         and other_status_on_other.active_appliance == 2
+        and peer_status_on_peer.id == peer_status_on_other.id
+        and peer_status_on_peer.id == other_status_on_peer.id
+        and peer_status_on_peer.id == other_status_on_other.id
+        and peer_status_on_peer.id > 0
     ):
         return 2
 
@@ -121,22 +140,26 @@ def which_state(peer: Node, other: Node) -> int:
     # Peer: primary_ip is peer, secondary_ip is other, activeAppliance=PRIMARY
     # Other: primary_ip is peer, secondary_ip is other, activeAppliance=PRIMARY
     if (
-        peer_status_on_peer.found
+        peer_status_on_peer is not None
         and peer_status_on_peer.primary_ip == peer.ip
         and peer_status_on_peer.secondary_ip == other.ip
         and peer_status_on_peer.active_appliance == 1
-        and other_status_on_peer.found
+        and other_status_on_peer is not None
         and other_status_on_peer.primary_ip == peer.ip
         and other_status_on_peer.secondary_ip == other.ip
         and other_status_on_peer.active_appliance == 1
-        and peer_status_on_other.found
+        and peer_status_on_other is not None
         and peer_status_on_other.primary_ip == peer.ip
         and peer_status_on_other.secondary_ip == other.ip
         and peer_status_on_other.active_appliance == 1
-        and other_status_on_other.found
+        and other_status_on_other is not None
         and other_status_on_other.primary_ip == peer.ip
         and other_status_on_other.secondary_ip == other.ip
         and other_status_on_other.active_appliance == 1
+        and peer_status_on_peer.id == peer_status_on_other.id
+        and peer_status_on_peer.id == other_status_on_peer.id
+        and peer_status_on_peer.id == other_status_on_other.id
+        and peer_status_on_peer.id > 0
     ):
         return 1
 

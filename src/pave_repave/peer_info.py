@@ -17,7 +17,7 @@ from pave_repave.utilities import setup_logging
 logger = logging.getLogger(__name__)
 
 
-def peer_info(node: Node) -> tuple[Status, dict]:
+def peer_info(node: Node) -> Status | None:
     """
     Get peer information from the NMS API v3/peers endpoint.
 
@@ -25,7 +25,7 @@ def peer_info(node: Node) -> tuple[Status, dict]:
         node: Node object with connection details
 
     Returns:
-        Tuple of (Status object with peer information, full API response dict)
+        Status object with peer information, or None if not found
     """
     base_url = f"https://localhost:{node.port}"
     url = f"{base_url}/api/v3/peers?activeAppliance=ALL&disabled=MATCH_ALL&master=MATCH_ALL"
@@ -38,27 +38,13 @@ def peer_info(node: Node) -> tuple[Status, dict]:
     # Extract peer information
     try:
         if "peers" not in response:
-            msg = "'peers' field not found in response"
-            logger.error(msg)
-            return (
-                Status(
-                    found=False,
-                    msg=msg
-                ),
-                response,
-            )
+            logger.error("'peers' field not found in response")
+            return None
 
         peers = response.get("peers", [])
         if not peers:
-            msg = "No peers found in response"
-            logger.error(msg)
-            return (
-                Status(
-                    found=False,
-                    msg=msg
-                ),
-                response,
-            )
+            logger.error("No peers found in response")
+            return None
 
         # Search through the peers list to find a match with the target IP
         target_ip = node.ip
@@ -67,26 +53,12 @@ def peer_info(node: Node) -> tuple[Status, dict]:
         for peer in peers:
             # Validate required fields are present
             if "primaryIp" not in peer:
-                msg = "Required field 'primaryIp' not present in peer data"
-                logger.error(msg)
-                return (
-                    Status(
-                        found=False,
-                        msg=msg
-                    ),
-                    response,
-                )
+                logger.error("Required field 'primaryIp' not present in peer data")
+                return None
             
             if "id" not in peer:
-                msg = "Required field 'id' not present in peer data"
-                logger.error(msg)
-                return (
-                    Status(
-                        found=False,
-                        msg=msg
-                    ),
-                    response,
-                )
+                logger.error("Required field 'id' not present in peer data")
+                return None
             
             primary_ip = peer.get("primaryIp", "")
             secondary_ip = peer.get("secondaryIp", "")
@@ -109,38 +81,20 @@ def peer_info(node: Node) -> tuple[Status, dict]:
                     f"✓ Peer match found: primaryIp={primary_ip}, secondaryIp={secondary_ip}, activeAppliance={active_appliance_str} ({active_appliance}), id={peer_id}"
                 )
 
-                return (
-                    Status(
-                        found=True,
-                        active_appliance=active_appliance,
-                        primary_ip=primary_ip,
-                        secondary_ip=secondary_ip,
-                        id=peer_id,
-                    ),
-                    response,
+                return Status(
+                    active_appliance=active_appliance,
+                    primary_ip=primary_ip,
+                    secondary_ip=secondary_ip,
+                    id=peer_id,
                 )
 
         # No matching peer found
-        msg = f"No peer found matching target IP: {target_ip}"
-        logger.info(msg)
-        return (
-            Status(
-                found=False,
-                msg=msg
-            ),
-            response,
-        )
+        logger.info(f"No peer found matching target IP: {target_ip}")
+        return None
 
     except KeyError as e:
-        msg = f"Missing expected field: {e}"
-        logger.error(msg)
-        return (
-            Status(
-                found=False,
-                msg=msg
-            ),
-            response,
-        )
+        logger.error(f"Missing expected field: {e}")
+        return None
 
 
 def main():
@@ -184,7 +138,7 @@ def main():
     logger.info("=" * 60)
 
     # Get peer info
-    status, full_response = peer_info(node=node)
+    status = peer_info(node=node)
 
     logger.info("=" * 60)
     logger.info("✓ Query completed successfully!")
@@ -192,23 +146,30 @@ def main():
 
     # Also output the parsed status for reference to stderr via logger
     logger.info("=" * 60)
-    logger.info("Parsed Peer Info Status:")
-    parsed_status = json.dumps(
-        {
-            "found": status.found,
-            "active_appliance": status.active_appliance,
-            "primary_ip": status.primary_ip,
-            "secondary_ip": status.secondary_ip,
-            "id": status.id,
-            "msg": status.msg,
-        },
-        indent=2,
-    )
-    logger.info(parsed_status)
-    logger.info("=" * 60)
-    
-    # Print parsed status to console (stdout)
-    print("\n" + "=" * 60)
-    print("Parsed Peer Info Status:")
-    print(parsed_status)
-    print("=" * 60)
+    if status is None:
+        logger.info("Not found")
+        logger.info("=" * 60)
+        
+        # Print to console (stdout)
+        print("\n" + "=" * 60)
+        print("Not found")
+        print("=" * 60)
+    else:
+        logger.info("Parsed Peer Info Status:")
+        parsed_status = json.dumps(
+            {
+                "active_appliance": status.active_appliance,
+                "primary_ip": status.primary_ip,
+                "secondary_ip": status.secondary_ip,
+                "id": status.id,
+            },
+            indent=2,
+        )
+        logger.info(parsed_status)
+        logger.info("=" * 60)
+        
+        # Print parsed status to console (stdout)
+        print("\n" + "=" * 60)
+        print("Parsed Peer Info Status:")
+        print(parsed_status)
+        print("=" * 60)

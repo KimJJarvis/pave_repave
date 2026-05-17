@@ -14,7 +14,9 @@ from pave_repave.status import Status
 @pytest.fixture
 def mock_node():
     """Create a mock Node object for testing."""
-    return Node(port=443, token="test_token_123", ip="192.168.122.1")
+    # Create a 361-character token for testing
+    test_token = "t" * 361
+    return Node(port=443, token=test_token, ip="192.168.122.1")
 
 
 @pytest.fixture
@@ -99,24 +101,21 @@ class TestPeerInfo:
         """Test parsing response with PRIMARY active appliance matching target IP."""
         mock_api_request.return_value = api_response_primary
 
-        status, response = peer_info(mock_node)
+        status = peer_info(mock_node)
 
         # Verify API was called correctly
         mock_api_request.assert_called_once()
         call_args = mock_api_request.call_args
-        assert "https://localhost:443/api/v3/peers" in call_args[0][0]
-        assert call_args[0][1] == "test_token_123"
-        assert call_args[1]["method"] == "GET"
+        assert "https://localhost:443/api/v3/peers" in call_args.kwargs["url"]
+        assert call_args.kwargs["bearer_token"] == "t" * 361
+        assert call_args.kwargs["method"] == "GET"
 
         # Verify status object
-        assert status.found is True
+        assert status is not None
         assert status.active_appliance == 1  # PRIMARY = 1
         assert status.primary_ip == "192.168.122.1"
         assert status.secondary_ip == ""
         assert status.id == 1
-
-        # Verify full response is returned
-        assert response == api_response_primary
 
     @patch("pave_repave.peer_info.make_single_api_request")
     def test_peer_info_secondary_match(
@@ -125,17 +124,14 @@ class TestPeerInfo:
         """Test parsing response with SECONDARY active appliance matching target IP."""
         mock_api_request.return_value = api_response_secondary
 
-        status, response = peer_info(mock_node)
+        status = peer_info(mock_node)
 
         # Verify status object
-        assert status.found is True
+        assert status is not None
         assert status.active_appliance == 2  # SECONDARY = 2
         assert status.primary_ip == "192.168.122.2"
         assert status.secondary_ip == "192.168.122.1"
         assert status.id == 2
-
-        # Verify full response is returned
-        assert response == api_response_secondary
 
     @patch("pave_repave.peer_info.make_single_api_request")
     def test_peer_info_unknown_appliance(
@@ -144,17 +140,14 @@ class TestPeerInfo:
         """Test parsing response with UNKNOWN active appliance."""
         mock_api_request.return_value = api_response_unknown
 
-        status, response = peer_info(mock_node)
+        status = peer_info(mock_node)
 
         # Verify status object
-        assert status.found is True
+        assert status is not None
         assert status.active_appliance == 0  # UNKNOWN = 0
         assert status.primary_ip == "192.168.122.1"
         assert status.secondary_ip == ""
         assert status.id == 3
-
-        # Verify full response is returned
-        assert response == api_response_unknown
 
     @patch("pave_repave.peer_info.make_single_api_request")
     def test_peer_info_no_match(
@@ -163,17 +156,10 @@ class TestPeerInfo:
         """Test parsing response when no peer matches target IP."""
         mock_api_request.return_value = api_response_no_match
 
-        status, response = peer_info(mock_node)
+        status = peer_info(mock_node)
 
-        # Verify status object indicates no match
-        assert status.found is False
-        assert status.active_appliance == 0
-        assert status.primary_ip == ""
-        assert status.secondary_ip == ""
-        assert status.id == 0
-
-        # Verify full response is returned
-        assert response == api_response_no_match
+        # Verify status is None when no match
+        assert status is None
 
     @patch("pave_repave.peer_info.make_single_api_request")
     def test_peer_info_empty_peers(
@@ -182,17 +168,10 @@ class TestPeerInfo:
         """Test parsing response with empty peers list."""
         mock_api_request.return_value = api_response_empty_peers
 
-        status, response = peer_info(mock_node)
+        status = peer_info(mock_node)
 
-        # Verify status object indicates no peers found
-        assert status.found is False
-        assert status.active_appliance == 0
-        assert status.primary_ip == ""
-        assert status.secondary_ip == ""
-        assert status.id == 0
-
-        # Verify full response is returned
-        assert response == api_response_empty_peers
+        # Verify status is None when no peers found
+        assert status is None
 
     @patch("pave_repave.peer_info.make_single_api_request")
     def test_peer_info_no_peers_field(
@@ -201,17 +180,10 @@ class TestPeerInfo:
         """Test parsing response without peers field."""
         mock_api_request.return_value = api_response_no_peers_field
 
-        status, response = peer_info(mock_node)
+        status = peer_info(mock_node)
 
-        # Verify status object indicates peers field not found
-        assert status.found is False
-        assert status.active_appliance == 0
-        assert status.primary_ip == ""
-        assert status.secondary_ip == ""
-        assert status.id == 0
-
-        # Verify full response is returned
-        assert response == api_response_no_peers_field
+        # Verify status is None when peers field not found
+        assert status is None
 
     @patch("pave_repave.peer_info.make_single_api_request")
     def test_peer_info_match_secondary_ip(self, mock_api_request, mock_node):
@@ -228,10 +200,10 @@ class TestPeerInfo:
         }
         mock_api_request.return_value = response_data
 
-        status, response = peer_info(mock_node)
+        status = peer_info(mock_node)
 
         # Verify peer is found when secondaryIp matches
-        assert status.found is True
+        assert status is not None
         assert status.active_appliance == 1
         assert status.primary_ip == "192.168.122.5"
         assert status.secondary_ip == "192.168.122.1"
@@ -264,10 +236,10 @@ class TestPeerInfo:
         }
         mock_api_request.return_value = response_data
 
-        status, response = peer_info(mock_node)
+        status = peer_info(mock_node)
 
         # Verify the matching peer (id=2) is found
-        assert status.found is True
+        assert status is not None
         assert status.active_appliance == 2
         assert status.primary_ip == "192.168.122.1"
         assert status.secondary_ip == "192.168.122.21"
