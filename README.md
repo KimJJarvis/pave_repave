@@ -1,10 +1,10 @@
-# Pave Repave Proceedure
+# Pave Repave Procedure
 
-## Pave Proceedure
+## Pave Procedure
 
-The Pave Proceedure replaces a peer in a NMS cluster.
+The Pave Procedure replaces a peer in a NMS cluster.
 
-The peer node will be replaced by its secondary and retired.  Initially, the peer must be an active node in the NMS cluster and it must have a passive secondary.  When the proceedure is complete, the secondary node will be the active peer in the NMS cluster and the peer will be retired.
+The peer node will be replaced by its secondary and retired.  Initially, the peer must be an active node in the NMS cluster and it must have a passive secondary.  When the Procedure is complete, the secondary node will be the active peer in the NMS cluster and the peer will be retired.
 
 | Action v3/api                            | Target | State | Active    | Primary | Secondary | Retired |
 | ---------------------------------------- | ------ | ----- | --------- | ------- | --------- | ------- |
@@ -451,7 +451,7 @@ options:
 ### pave
 
 ```bash
-The Pave Proceedure replaces a peer in a NMS cluster
+The Pave Procedure replaces a peer in a NMS cluster
 
 options:
   -h, --help            show this help message and exit
@@ -470,7 +470,7 @@ options:
 ### repave
 
 ```bash
-The Repave Proceedure ensures high availability for a peer in a NMS cluster.
+The Repave Procedure ensures high availability for a peer in a NMS cluster.
 
 options:
   -h, --help            show this help message and exit

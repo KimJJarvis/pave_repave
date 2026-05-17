@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 def repave(peer_node: Node, spare_node: Node, ip_peer: str) -> None:
     """
     Execute the repave workflow.
-    
+
     Args:
         peer_node: Node object for the peer
         spare_node: Node object for the spare
@@ -75,7 +75,9 @@ def repave(peer_node: Node, spare_node: Node, ip_peer: str) -> None:
 
     logger.info("Calling become_hsa on spare...")
     try:
-        response = become_hsa(node=spare_node, ip_peer=ip_peer, integration_token=integration_token)
+        response = become_hsa(
+            node=spare_node, ip_peer=ip_peer, integration_token=integration_token
+        )
 
         # Check for HTTP status code 200
         http_status = response.get(
@@ -186,15 +188,13 @@ def repave(peer_node: Node, spare_node: Node, ip_peer: str) -> None:
     # Wait for system to reach state 3
     logger.info("Waiting for system to reach state 3...")
     wait_state(state=3, peer=peer_node, other=spare_node)
-    logger.info("✓ System verified to be in state 3")    
-
- 
+    logger.info("✓ System verified to be in state 3")
 
 
 def main():
     """Main entry point for the repave workflow script."""
     parser = argparse.ArgumentParser(
-        description="The Repave Proceedure ensures high availability for a peer in a NMS cluster."
+        description="The Repave Procedure ensures high availability for a peer in a NMS cluster."
     )
     parser.add_argument(
         "--log-level",
@@ -208,7 +208,9 @@ def main():
     parser.add_argument(
         "--token_peer", required=True, help="Bearer token for peer authentication"
     )
-    parser.add_argument("--ip_peer", required=True, help="IP address of the peer node (dot format)")
+    parser.add_argument(
+        "--ip_peer", required=True, help="IP address of the peer node (dot format)"
+    )
     parser.add_argument(
         "--port_peer", required=True, type=int, help="Port number for peer node"
     )
@@ -243,6 +245,5 @@ def main():
 
     # Execute the repave workflow
     repave(peer_node=peer_node, spare_node=spare_node, ip_peer=args.ip_peer)
-    
-    print("✓ Repave workflow completed successfully!")
 
+    print("✓ Repave workflow completed successfully!")

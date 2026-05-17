@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 def pave(peer_node: Node, hsa_node: Node):
     """
     Execute the pave workflow to replace a peer in a NMS cluster.
-    
+
     Args:
         peer_node: Node object representing the peer node
         hsa_node: Node object representing the HSA node
@@ -146,11 +146,10 @@ def pave(peer_node: Node, hsa_node: Node):
     logger.info("✓ System verified to be in state 4")
 
 
-
 def main():
     """Main entry point for the fused workflow script."""
     parser = argparse.ArgumentParser(
-        description="The Pave Proceedure replaces a peer in a NMS cluster"
+        description="The Pave Procedure replaces a peer in a NMS cluster"
     )
     parser.add_argument(
         "--log-level",
@@ -161,14 +160,18 @@ def main():
     parser.add_argument(
         "--log-file", type=str, default=None, help="Log to file instead of console"
     )
-    parser.add_argument("--ip_peer", required=True, help="IP address of the peer node (dot format)")
+    parser.add_argument(
+        "--ip_peer", required=True, help="IP address of the peer node (dot format)"
+    )
     parser.add_argument(
         "--token_peer", required=True, help="Bearer token for peer authentication"
     )
     parser.add_argument(
         "--port_peer", required=True, type=int, help="Port number for peer node"
     )
-    parser.add_argument("--ip_hsa", required=True, help="IP address of the HSA node (dot format)")
+    parser.add_argument(
+        "--ip_hsa", required=True, help="IP address of the HSA node (dot format)"
+    )
     parser.add_argument(
         "--port_hsa", required=True, type=int, help="Port number for HSA node"
     )
