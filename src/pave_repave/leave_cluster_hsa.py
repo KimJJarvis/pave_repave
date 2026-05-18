@@ -67,7 +67,7 @@ def main():
     parser = argparse.ArgumentParser(description="Calls the gRPC endpoint api.v3.cluster-orchestrator.leave-cluster-hsa on a HSA node.")
     parser.add_argument(
         "--log-level",
-        default="INFO",
+        default="ERROR",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Set the logging level",
     )

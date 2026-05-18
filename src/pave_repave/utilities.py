@@ -118,3 +118,4 @@ def exit_with_error(message: str) -> None:
     """
     logger.error(message)
     sys.exit(1)
+

@@ -83,7 +83,7 @@ def main():
     )
     parser.add_argument(
         "--log-level",
-        default="INFO",
+        default="ERROR",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Set the logging level",
     )
@@ -95,8 +95,8 @@ def main():
         required=True,
         help="Bearer token for authentication",
     )
-    parser.add_argument("--ip_peer", required=True, help="IP address of the peer (dot format)")
-    parser.add_argument("--port_peer", required=True, type=int, help="Port number of the peer")
+    parser.add_argument("--ip", required=True, help="IP address of the peer (dot format)")
+    parser.add_argument("--port", required=True, type=int, help="Port number of the peer")
     parser.add_argument("--id", required=True, type=int, help="ID of the peer in the peers table")
 
     args = parser.parse_args()

@@ -68,7 +68,7 @@ def main():
     parser = argparse.ArgumentParser(description="Calls the gRPC endpoint api.v3.cluster-orchestrator.become-hsa on a spare node.")
     parser.add_argument(
         "--log-level",
-        default="INFO",
+        default="ERROR",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Set the logging level",
     )
@@ -76,10 +76,10 @@ def main():
         "--log-file", type=str, default=None, help="Log to file instead of console"
     )
     parser.add_argument(
-        "--token_spare", required=True, help="Bearer token for authentication on spare node"
+        "--token", required=True, help="Bearer token for authentication"
     )
-    parser.add_argument("--ip_spare", required=True, help="IP address of the spare node (dot format)")
-    parser.add_argument("--port_spare", required=True, type=int, help="Port number of the spare node")
+    parser.add_argument("--ip", required=True, help="IP address of the spare node (dot format)")
+    parser.add_argument("--port", required=True, type=int, help="Port number of the spare node")
     parser.add_argument(
         "--ip_peer", required=True, help="Primary/Peer IP address in the cluster (dot format)"
     )
@@ -91,7 +91,7 @@ def main():
     setup_logging(args.log_level, args.log_file)
 
     # Create Node object
-    node = Node(port=args.port_spare, token=args.token_spare, ip=args.ip_spare)
+    node = Node(port=args.port, token=args.token, ip=args.ip)
 
     # Call become-hsa
     response = become_hsa(node=node, ip_peer=args.ip_peer, integration_token=args.integration_token)

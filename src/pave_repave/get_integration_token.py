@@ -26,9 +26,9 @@ def get_integration_token(node: Node) -> str:
     Returns:
         The integration token string
     """
+    logger.info(f"get_integration_token called with node: ip={node.ip}, port={node.port}")
     base_url = f"https://localhost:{node.port}"
     url = f"{base_url}/api/v3/cluster-orchestrator/integration-token"
-    logger.info(f"Getting integration token from {url}...")
 
     response = make_single_api_request(url=url, bearer_token=node.token, method="GET")
 
@@ -56,40 +56,19 @@ def main():
     parser.add_argument(
         "--token", required=True, help="Bearer token for authentication"
     )
-    parser.add_argument("--ip_peer", required=True, help="IP address of peer (dot format)")
-    parser.add_argument("--port_peer", required=True, type=int, help="Port number for peer")
+    parser.add_argument("--ip", required=True, help="IP address of peer (dot format)")
+    parser.add_argument("--port", required=True, type=int, help="Port number for peer")
 
     args = parser.parse_args()
 
     # ⚠️ Must be called before any other logging calls
     setup_logging(args.log_level, args.log_file)
 
-    logger.debug("Starting get-integration-token.py script")
-    logger.debug("Arguments parsed:")
-    logger.debug(f"  Token: {args.token[:20]}...")
-    logger.debug(f"  IP: {args.ip}")
-    logger.debug(f"  Port: {args.port}")
-
     # Create Node object
     node = Node(port=args.port, token=args.token, ip=args.ip)
 
-    # Construct base URL - request goes to localhost with port forwarding
-    base_url = f"https://localhost:{node.port}"
-
-    logger.info("=" * 60)
-    logger.info("Get Integration Token")
-    logger.info("=" * 60)
-    logger.info(f"Node: {base_url} (forwarded to {node.ip})")
-    logger.info("=" * 60)
-
     # Get integration token
-    logger.info("Getting integration token...")
     integration_token = get_integration_token(node=node)
 
-    logger.info("=" * 60)
-    logger.info("✓ Operation completed successfully!")
-    logger.info("=" * 60)
-
     # Output the integration token to stdout
-    print("\nIntegration Token:")
-    print(json.dumps({"token": integration_token}, indent=2))
+    print(integration_token)

@@ -5,7 +5,7 @@ Node model for representing a cluster node.
 
 from pydantic import BaseModel, field_validator
 
-from pave_repave.utilities import validate_ip_address, validate_port, validate_token_length
+from pave_repave.utilities import validate_ip_format, validate_port, validate_token_length
 
 
 class Node(BaseModel):
@@ -19,7 +19,7 @@ class Node(BaseModel):
     @classmethod
     def validate_ip(cls, value: str) -> str:
         """Validate node IP address."""
-        if not validate_ip_address(value):
+        if not validate_ip_format(value):
             msg = f"Invalid IP address: {value}"
             raise ValueError(msg)
         return value

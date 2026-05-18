@@ -67,11 +67,11 @@ def fail_over(node: Node) -> Response:
 def main():
     """Main entry point for the script."""
     parser = argparse.ArgumentParser(
-        description="Calls the gRPC endpoint api.v3.cluster-manager.fail-over on a peer node."
+        description="Calls the gRPC endpoint api.v3.cluster-manager.fail-over a peer."
     )
     parser.add_argument(
         "--log-level",
-        default="INFO",
+        default="ERROR",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Set the logging level",
     )
@@ -79,12 +79,12 @@ def main():
         "--log-file", type=str, default=None, help="Log to file instead of console"
     )
     parser.add_argument(
-        "--token_peer", required=True, help="Bearer token for authentication on peer"
+        "--token", required=True, help="Bearer token for authentication"
     )
     parser.add_argument(
-        "--ip_peer", required=True, help="IP address of the peer node to fail-over (dot format)"
+        "--ip", required=True, help="IP address of the peer to fail-over (dot format)"
     )
-    parser.add_argument("--port_peer", required=True, type=int, help="Port number of the peer node")
+    parser.add_argument("--port", required=True, type=int, help="Port number of the peer")
 
     args = parser.parse_args()
 
@@ -92,7 +92,7 @@ def main():
     setup_logging(args.log_level, args.log_file)
 
     # Create Node object
-    node = Node(port=args.port_peer, token=args.token_peer, ip=args.ip_peer)
+    node = Node(port=args.port, token=args.token, ip=args.ip)
 
     # Construct base URL - requests go to localhost with port forwarding
     base_url = f"https://localhost:{node.port}"
