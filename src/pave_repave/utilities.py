@@ -109,6 +109,30 @@ def validate_token_length(token: str, expected_length: int) -> bool:
     return len(token) == expected_length
 
 
+def validate_unique_ips(*ips: str) -> None:
+    """
+    Validate that all provided IP addresses are unique.
+
+    Args:
+        *ips: Variable number of IP address strings to validate
+
+    Raises:
+        ValueError: If any IP addresses are duplicated
+    """
+    ip_list = list(ips)
+    if len(ip_list) != len(set(ip_list)):
+        # Find duplicates for better error message
+        seen = set()
+        duplicates = set()
+        for ip in ip_list:
+            if ip in seen:
+                duplicates.add(ip)
+            seen.add(ip)
+        raise ValueError(
+            f"IP addresses must be unique. Duplicate IP(s) found: {', '.join(sorted(duplicates))}"
+        )
+
+
 def exit_with_error(message: str) -> None:
     """
     Log an error message and exit with code 1.

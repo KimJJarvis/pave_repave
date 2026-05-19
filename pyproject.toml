@@ -17,6 +17,8 @@ pave = "pave_repave.pave:main"
 peer_info = "pave_repave.peer_info:main"
 repave = "pave_repave.repave:main"
 switch_primary_secondary = "pave_repave.switch_primary_secondary:main"
+state_info = "pave_repave.state_info:main"
+paverepave = "pave_repave.paverepave:main"
 
 [build-system]
 requires = ["hatchling"]
