@@ -26,6 +26,7 @@ from pave_repave.get_integration_token import get_integration_token
 from pave_repave.peer_info import peer_info
 from pave_repave.leave_cluster_hsa import leave_cluster_hsa
 from pave_repave.become_hsa import become_hsa
+from pave_repave.get_token import get_token
 
 logger = logging.getLogger(__name__)
 
@@ -359,21 +360,18 @@ def main():
         "--log-file", type=str, default=None, help="Log to file instead of console"
     )
     parser.add_argument(
-        "--token_peer", required=True, help="Bearer token for authentication"
+        "--username", required=True, help="Username for authentication"
+    )
+    parser.add_argument(
+        "--password", required=True, help="Password for authentication"
     )
     parser.add_argument("--ip_peer", required=True, help="IP address of the peer node (in dot format)")
     parser.add_argument(
         "--port_peer", required=True, type=int, help="Port number for peer node"
     )
-    parser.add_argument(
-        "--token_hsa", required=True, help="Bearer token for authentication"
-    )
     parser.add_argument("--ip_hsa", required=True, help="IP address of the HSA node (in dot format)")
     parser.add_argument(
         "--port_hsa", required=True, type=int, help="Port number for HSA node"
-    )
-    parser.add_argument(
-        "--token_spare", required=True, help="Bearer token for authentication"
     )
     parser.add_argument("--ip_spare", required=True, help="IP address of the spare node")
     parser.add_argument(
@@ -387,9 +385,19 @@ def main():
 
     # Construct Node objects
     try:
-        peer = Node(port=args.port_peer, token=args.token_peer, ip=args.ip_peer)
-        hsa = Node(port=args.port_hsa, token=args.token_hsa, ip=args.ip_hsa)
-        spare = Node(port=args.port_spare, token=args.token_spare, ip=args.ip_spare)
+        # Get authentication tokens for each node
+        logger.info("Retrieving authentication token for peer node...")
+        token_peer = get_token(username=args.username, password=args.password, port=args.port_peer)
+        
+        logger.info("Retrieving authentication token for HSA node...")
+        token_hsa = get_token(username=args.username, password=args.password, port=args.port_hsa)
+        
+        logger.info("Retrieving authentication token for spare node...")
+        token_spare = get_token(username=args.username, password=args.password, port=args.port_spare)
+        
+        peer = Node(port=args.port_peer, token=token_peer, ip=args.ip_peer)
+        hsa = Node(port=args.port_hsa, token=token_hsa, ip=args.ip_hsa)
+        spare = Node(port=args.port_spare, token=token_spare, ip=args.ip_spare)
 
         paverepave(peer=peer, hsa=hsa, spare=spare)
 

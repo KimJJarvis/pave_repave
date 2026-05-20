@@ -12,6 +12,7 @@ import logging
 
 from pave_repave.node import Node
 from pave_repave.peer_info import peer_info
+from pave_repave.get_token import get_token
 from pave_repave.utilities import (
     validate_ip_address,
     validate_port,
@@ -60,8 +61,8 @@ def state_info(peer: Node, hsa: Node, spare: Node) -> int:
             and hsa_status_on_hsa.active_appliance == 1
         ):
             logger.info(f"HSA is passive secondary") 
-            spare_status_on_spare=peer_info(Node(port=spare.port, token=spare.token, ip="127.0.0.1"))
-            if (spare_status_on_spare is not None):
+            loopback_status_on_spare=peer_info(Node(port=spare.port, token=spare.token, ip="127.0.0.1"))
+            if (loopback_status_on_spare is not None):
                 logger.info(f"Spare is spare") 
                 return 1
             logger.info(f"Spare is not spare")             
@@ -82,8 +83,8 @@ def state_info(peer: Node, hsa: Node, spare: Node) -> int:
             and hsa_status_on_hsa.active_appliance == 2
         ):
             logger.info(f"HSA is active secondary") 
-            spare_status_on_spare=peer_info(Node(port=spare.port, token=spare.token, ip="127.0.0.1"))
-            if (spare_status_on_spare is not None):
+            loopback_status_on_spare=peer_info(Node(port=spare.port, token=spare.token, ip="127.0.0.1"))
+            if (loopback_status_on_spare is not None):
                 logger.info(f"Spare is spare") 
                 return 2
             logger.info(f"Spare is not spare")             
@@ -104,8 +105,8 @@ def state_info(peer: Node, hsa: Node, spare: Node) -> int:
             and hsa_status_on_hsa.active_appliance == 1
         ):
             logger.info(f"HSA is active secondary") 
-            spare_status_on_spare=peer_info(Node(port=spare.port, token=spare.token, ip="127.0.0.1"))
-            if (spare_status_on_spare is not None):
+            loopback_status_on_spare=peer_info(Node(port=spare.port, token=spare.token, ip="127.0.0.1"))
+            if (loopback_status_on_spare is not None):
                 logger.info(f"Spare is spare") 
                 return 3
             logger.info(f"Spare is not spare")             
@@ -122,8 +123,8 @@ def state_info(peer: Node, hsa: Node, spare: Node) -> int:
         return 0
     elif (peer_status_on_peer is None):
         logger.info(f"Peer is not in cluster")
-        spare_status_on_peer=peer_info(Node(port=peer.port, token=peer.token, ip="127.0.0.1")) 
-        if (spare_status_on_peer is not None):
+        loopback_status_on_peer=peer_info(Node(port=peer.port, token=peer.token, ip="127.0.0.1")) 
+        if (loopback_status_on_peer is not None):
             logger.info(f"Peer is spare") 
             if (
                 hsa_status_on_hsa is not None
@@ -132,8 +133,8 @@ def state_info(peer: Node, hsa: Node, spare: Node) -> int:
                 and hsa_status_on_hsa.active_appliance == 1
             ):
                 logger.info(f"HSA is active primary, stand alone")
-                spare_status_on_spare=peer_info(Node(port=spare.port, token=spare.token, ip="127.0.0.1"))
-                if (spare_status_on_spare is not None):
+                loopback_status_on_spare=peer_info(Node(port=spare.port, token=spare.token, ip="127.0.0.1"))
+                if (loopback_status_on_spare is not None):
                     logger.info(f"Spare is spare") 
                     return 4
             elif (
@@ -179,12 +180,12 @@ def state_info(peer: Node, hsa: Node, spare: Node) -> int:
                 and hsa_status_on_hsa.active_appliance == 1
             ):
                 logger.info(f"HSA is passive secondary, spare is active primary")
-                spare_status_on_spare=peer_info(Node(port=spare.port, token=hsa.token, ip=spare.ip)) 
+                loopback_status_on_spare=peer_info(Node(port=spare.port, token=hsa.token, ip=spare.ip)) 
                 if (
-                    spare_status_on_spare is not None
-                    and spare_status_on_spare.primary_ip == spare.ip
-                    and spare_status_on_spare.secondary_ip == hsa.ip
-                    and spare_status_on_spare.active_appliance == 1
+                    loopback_status_on_spare is not None
+                    and loopback_status_on_spare.primary_ip == spare.ip
+                    and loopback_status_on_spare.secondary_ip == hsa.ip
+                    and loopback_status_on_spare.active_appliance == 1
                 ):
                     logger.info(f"Spare is active primary")
                     return 7
@@ -267,21 +268,18 @@ def main():
         "--log-file", type=str, default=None, help="Log to file instead of console"
     )
     parser.add_argument(
-        "--token_peer", required=True, help="Bearer token for authentication"
+        "--username", required=True, help="Username for authentication"
+    )
+    parser.add_argument(
+        "--password", required=True, help="Password for authentication"
     )
     parser.add_argument("--ip_peer", required=True, help="IP address of the peer node (in dot format)")
     parser.add_argument(
         "--port_peer", required=True, type=int, help="Port number for peer node"
     )
-    parser.add_argument(
-        "--token_hsa", required=True, help="Bearer token for authentication"
-    )
     parser.add_argument("--ip_hsa", required=True, help="IP address of the HSA node (in dot format)")
     parser.add_argument(
         "--port_hsa", required=True, type=int, help="Port number for HSA node"
-    )
-    parser.add_argument(
-        "--token_spare", required=True, help="Bearer token for authentication"
     )
     parser.add_argument("--ip_spare", required=True, help="IP address of the spare node")
     parser.add_argument(
@@ -293,10 +291,20 @@ def main():
     # ⚠️ Must be called before any other logging calls
     setup_logging(args.log_level, args.log_file)
 
+    # Get authentication tokens for each node
+    logger.info("Retrieving authentication token for peer node...")
+    token_peer = get_token(username=args.username, password=args.password, port=args.port_peer)
+    
+    logger.info("Retrieving authentication token for HSA node...")
+    token_hsa = get_token(username=args.username, password=args.password, port=args.port_hsa)
+    
+    logger.info("Retrieving authentication token for spare node...")
+    token_spare = get_token(username=args.username, password=args.password, port=args.port_spare)
+
     # Construct Node objects
-    peer_node = Node(port=args.port_peer, token=args.token_peer, ip=args.ip_peer)
-    hsa_node = Node(port=args.port_hsa, token=args.token_hsa, ip=args.ip_hsa)
-    spare_node = Node(port=args.port_spare, token=args.token_spare, ip=args.ip_spare)
+    peer_node = Node(port=args.port_peer, token=token_peer, ip=args.ip_peer)
+    hsa_node = Node(port=args.port_hsa, token=token_hsa, ip=args.ip_hsa)
+    spare_node = Node(port=args.port_spare, token=token_spare, ip=args.ip_spare)
 
     # Determine and print the current state
     current_state = state_info(peer=peer_node, hsa=hsa_node, spare=spare_node)
