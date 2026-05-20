@@ -5,7 +5,7 @@ Node model for representing a cluster node.
 
 from pydantic import BaseModel, field_validator
 
-from pave_repave.utilities import validate_ip_format, validate_port, validate_token_length
+from pave_repave.utilities import validate_ip_format, validate_port
 
 
 class Node(BaseModel):
@@ -33,11 +33,3 @@ class Node(BaseModel):
             raise ValueError(msg)
         return value
 
-    @field_validator("token")
-    @classmethod
-    def validate_node_token(cls, value: str) -> str:
-        """Validate node token length."""
-        if not validate_token_length(value, 361):
-            msg = f"Invalid token length: expected 361 characters, got {len(value)}"
-            raise ValueError(msg)
-        return value

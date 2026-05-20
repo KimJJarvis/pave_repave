@@ -194,7 +194,7 @@ def state_info(peer: Node, hsa: Node, spare: Node) -> int:
                 hsa_status_on_hsa is None
             ):
                 logger.info(f"HSA is spare") 
-                return 0
+                return 4 # Special initial case
             else: 
                 logger.info(f"Invalid state") 
                 return 0
