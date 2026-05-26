@@ -13,6 +13,7 @@ from pave_repave.node import Node
 from pave_repave.response import Response
 from pave_repave.make_single_api_request import make_single_api_request
 from pave_repave.utilities import setup_logging
+from pave_repave.get_token import get_token
 
 logger = logging.getLogger(__name__)
 
@@ -91,9 +92,10 @@ def main():
         "--log-file", type=str, default=None, help="Log to file instead of console"
     )
     parser.add_argument(
-        "--token",
-        required=True,
-        help="Bearer token for authentication",
+        "--username", required=True, help="Username for authentication"
+    )
+    parser.add_argument(
+        "--password", required=True, help="Password for authentication"
     )
     parser.add_argument("--ip", required=True, help="IP address of the peer (dot format)")
     parser.add_argument("--port", required=True, type=int, help="Port number of the peer")
@@ -104,8 +106,11 @@ def main():
     # ⚠️ Must be called before any other logging calls
     setup_logging(args.log_level, args.log_file)
 
+    # Get authentication token
+    token = get_token(username=args.username, password=args.password, port=args.port)
+
     # Create Node object
-    node = Node(port=args.port, token=args.token, ip=args.ip)
+    node = Node(port=args.port, token=token, ip=args.ip)
 
     # Call switch-primary-secondary
     response = switch_primary_secondary(node=node, id=args.id)

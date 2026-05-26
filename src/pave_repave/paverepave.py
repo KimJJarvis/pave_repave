@@ -19,7 +19,12 @@ from pave_repave.utilities import (
     validate_unique_ips,
     setup_logging,
 )
-from pave_repave.state_info import state_info, verify_state, wait_state,state_description
+from pave_repave.state_info import (
+    state_info,
+    verify_state,
+    wait_state,
+    state_description,
+)
 from pave_repave.fail_over import fail_over
 from pave_repave.switch_primary_secondary import switch_primary_secondary
 from pave_repave.get_integration_token import get_integration_token
@@ -34,13 +39,13 @@ logger = logging.getLogger(__name__)
 def precondition(state: int, peer: Node, hsa: Node, spare: Node) -> None:
     """
     Verify that the system is in the expected state.
-    
+
     Args:
         state: Expected state number
         peer: Peer node
         hsa: HSA node
         spare: Spare node
-        
+
     Raises:
         ValueError: If system is not in the expected state
     """
@@ -54,7 +59,7 @@ def precondition(state: int, peer: Node, hsa: Node, spare: Node) -> None:
 def postcondition(state: int, peer: Node, hsa: Node, spare: Node) -> None:
     """
     Wait for the system to reach the expected state and verify.
-    
+
     Args:
         state: Expected state number
         peer: Peer node
@@ -71,18 +76,18 @@ def postcondition(state: int, peer: Node, hsa: Node, spare: Node) -> None:
 def pave_fail_over(peer: Node, hsa: Node, spare: Node) -> None:
     """
     Perform fail-over operation on the peer node.
-    
+
     Verifies system is in state 1, initiates fail-over on peer node,
     and waits for system to reach state 2.
-    
+
     Args:
         peer: Peer node
         hsa: HSA node
         spare: Spare node
-        
+
     Returns:
         0 on success
-        
+
     Raises:
         ValueError: If system is not in state 1
         RuntimeError: If fail-over fails or returns unexpected response
@@ -99,11 +104,15 @@ def pave_fail_over(peer: Node, hsa: Node, spare: Node) -> None:
         raise RuntimeError(f"fail_over error: {fail_over_response.message}")
 
     if "Failover successfully started" not in fail_over_response.message:
-        raise RuntimeError(f"Unexpected fail_over response: {fail_over_response.message}")
+        raise RuntimeError(
+            f"Unexpected fail_over response: {fail_over_response.message}"
+        )
 
     logger.info("✓ fail_over initiated successfully")
 
     postcondition(state=2, peer=peer, hsa=hsa, spare=spare)
+    time.sleep(30)
+
 
 def pave_switch_primary_secondary(peer: Node, hsa: Node, spare: Node) -> None:
     precondition(state=2, peer=peer, hsa=hsa, spare=spare)
@@ -163,23 +172,28 @@ def pave_switch_primary_secondary(peer: Node, hsa: Node, spare: Node) -> None:
         )
 
     postcondition(state=3, peer=peer, hsa=hsa, spare=spare)
+    time.sleep(30)
+
 
 def pave_leave_cluster_hsa(peer: Node, hsa: Node, spare: Node) -> None:
     precondition(state=3, peer=peer, hsa=hsa, spare=spare)
 
-    logger.info("Get integration token")
-    integration_token = get_integration_token(node=hsa)
+    logger.info("Disabled")
+    # logger.info("Get integration token")
+    # integration_token = get_integration_token(node=hsa)
 
-    logger.info(f"✓ Integration token obtained (length: {len(integration_token)})")
+    # logger.info(f"✓ Integration token obtained (length: {len(integration_token)})")
 
-    logger.info("Calling leave_cluster_hsa on HSA...")
-    try:
-        leave_cluster_hsa(node=peer, integration_token=integration_token)
-        logger.info("✓ leave_cluster_hsa completed successfully")
-    except Exception as e:
-        raise RuntimeError(f"leave_cluster_hsa failed: {str(e)}")
+    # logger.info("Calling leave_cluster_hsa on HSA...")
+    # try:
+    #     leave_cluster_hsa(node=peer, integration_token=integration_token)
+    #     logger.info("✓ leave_cluster_hsa completed successfully")
+    # except Exception as e:
+    #     raise RuntimeError(f"leave_cluster_hsa failed: {str(e)}")
 
-    postcondition(state=4, peer=peer, hsa=hsa, spare=spare)
+    # postcondition(state=4, peer=peer, hsa=hsa, spare=spare)
+    time.sleep(30)
+
 
 def repave_become_hsa(peer: Node, hsa: Node, spare: Node) -> None:
     precondition(state=4, peer=peer, hsa=hsa, spare=spare)
@@ -234,13 +248,14 @@ def repave_become_hsa(peer: Node, hsa: Node, spare: Node) -> None:
         raise RuntimeError(f"become_hsa failed: {str(e)}")
 
     postcondition(state=5, peer=peer, hsa=hsa, spare=spare)
-    pass
+    time.sleep(30)
+
 
 def repave_fail_over(peer: Node, hsa: Node, spare: Node) -> None:
     precondition(state=5, peer=peer, hsa=hsa, spare=spare)
 
-    spare.token = hsa.token    
-    
+    spare.token = hsa.token
+
     logger.info("Calling fail_over on hsa...")
     fail_over_response = fail_over(node=hsa)
 
@@ -251,16 +266,19 @@ def repave_fail_over(peer: Node, hsa: Node, spare: Node) -> None:
         raise RuntimeError(f"fail_over error: {fail_over_response.message}")
 
     if "Failover successfully started" not in fail_over_response.message:
-        raise RuntimeError(f"Unexpected fail_over response: {fail_over_response.message}")
+        raise RuntimeError(
+            f"Unexpected fail_over response: {fail_over_response.message}"
+        )
 
     logger.info("✓ fail_over initiated successfully")
 
     postcondition(state=6, peer=peer, hsa=hsa, spare=spare)
-    pass
+    time.sleep(30)
+
 
 def repave_switch_primary_secondary(peer: Node, hsa: Node, spare: Node) -> None:
     precondition(state=6, peer=peer, hsa=hsa, spare=spare)
-    
+
     spare.token = hsa.token
 
     logger.info("Getting peer info to obtain peer ID...")
@@ -318,17 +336,17 @@ def repave_switch_primary_secondary(peer: Node, hsa: Node, spare: Node) -> None:
         )
 
     postcondition(state=7, peer=peer, hsa=hsa, spare=spare)
-    pass
+
 
 def paverepave(peer: Node, hsa: Node, spare: Node) -> None:
     """
     Perform pave/repave operation on the cluster.
-    
+
     Args:
         peer: Peer node
         hsa: HSA node
         spare: Spare node
-        
+
     Raises:
         ValueError: If IP addresses are not unique or system is not in state 1
         RuntimeError: If peer information cannot be obtained
@@ -336,12 +354,19 @@ def paverepave(peer: Node, hsa: Node, spare: Node) -> None:
     # Verify that all IP addresses are unique
     validate_unique_ips(peer.ip, hsa.ip, spare.ip)
     logger.info("✓ IP addresses verified to be unique")
-    
-    s = state_info(peer,hsa,spare)
-    
-    funcs = [pave_fail_over, pave_switch_primary_secondary, pave_leave_cluster_hsa, repave_become_hsa, repave_fail_over, repave_switch_primary_secondary]
 
-    for f in funcs[s-1:] if 1 <= s <= 6 else []:
+    s = state_info(peer, hsa, spare)
+
+    funcs = [
+        pave_fail_over,
+        pave_switch_primary_secondary,
+        pave_leave_cluster_hsa,
+        repave_become_hsa,
+        repave_fail_over,
+        repave_switch_primary_secondary,
+    ]
+
+    for f in funcs[s - 1 :] if 1 <= s <= 6 else []:
         f(peer=peer, hsa=hsa, spare=spare)
 
 
@@ -359,21 +384,23 @@ def main():
     parser.add_argument(
         "--log-file", type=str, default=None, help="Log to file instead of console"
     )
+    parser.add_argument("--username", required=True, help="Username for authentication")
+    parser.add_argument("--password", required=True, help="Password for authentication")
     parser.add_argument(
-        "--username", required=True, help="Username for authentication"
+        "--ip_peer", required=True, help="IP address of the peer node (in dot format)"
     )
-    parser.add_argument(
-        "--password", required=True, help="Password for authentication"
-    )
-    parser.add_argument("--ip_peer", required=True, help="IP address of the peer node (in dot format)")
     parser.add_argument(
         "--port_peer", required=True, type=int, help="Port number for peer node"
     )
-    parser.add_argument("--ip_hsa", required=True, help="IP address of the HSA node (in dot format)")
+    parser.add_argument(
+        "--ip_hsa", required=True, help="IP address of the HSA node (in dot format)"
+    )
     parser.add_argument(
         "--port_hsa", required=True, type=int, help="Port number for HSA node"
     )
-    parser.add_argument("--ip_spare", required=True, help="IP address of the spare node")
+    parser.add_argument(
+        "--ip_spare", required=True, help="IP address of the spare node"
+    )
     parser.add_argument(
         "--port_spare", required=True, type=int, help="Port number for spare node"
     )
@@ -387,14 +414,20 @@ def main():
     try:
         # Get authentication tokens for each node
         logger.info("Retrieving authentication token for peer node...")
-        token_peer = get_token(username=args.username, password=args.password, port=args.port_peer)
-        
+        token_peer = get_token(
+            username=args.username, password=args.password, port=args.port_peer
+        )
+
         logger.info("Retrieving authentication token for HSA node...")
-        token_hsa = get_token(username=args.username, password=args.password, port=args.port_hsa)
-        
+        token_hsa = get_token(
+            username=args.username, password=args.password, port=args.port_hsa
+        )
+
         logger.info("Retrieving authentication token for spare node...")
-        token_spare = get_token(username=args.username, password=args.password, port=args.port_spare)
-        
+        token_spare = get_token(
+            username=args.username, password=args.password, port=args.port_spare
+        )
+
         peer = Node(port=args.port_peer, token=token_peer, ip=args.ip_peer)
         hsa = Node(port=args.port_hsa, token=token_hsa, ip=args.ip_hsa)
         spare = Node(port=args.port_spare, token=token_spare, ip=args.ip_spare)

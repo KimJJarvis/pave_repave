@@ -227,8 +227,8 @@ def wait_state(state: int, peer: Node, hsa: Node, spare: Node) -> None:
     retry_count = 0
 
     logger.info(f"Waiting for state {state}...")
-    time.sleep(10) # Wait for process to start
 
+    time.sleep(10) # Wait for process to start
     while retry_count < max_retries:
         if retry_count > 0:
             logger.info(f"Retry attempt {retry_count}/{max_retries}...")

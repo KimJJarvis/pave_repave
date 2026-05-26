@@ -12,6 +12,7 @@ import logging
 from pave_repave.node import Node
 from pave_repave.make_single_api_request import make_single_api_request
 from pave_repave.utilities import setup_logging
+from pave_repave.get_token import get_token
 
 logger = logging.getLogger(__name__)
 
@@ -75,10 +76,13 @@ def main():
         "--log-file", type=str, default=None, help="Log to file instead of console"
     )
     parser.add_argument(
-        "--token_hsa", required=True, help="Bearer token for authentication on HSA"
+        "--username", required=True, help="Username for authentication"
     )
-    parser.add_argument("--ip_hsa", required=True, help="IP address of the HSA (dot format)")
-    parser.add_argument("--port_hsa", required=True, type=int, help="Port number of the HSA")
+    parser.add_argument(
+        "--password", required=True, help="Password for authentication"
+    )
+    parser.add_argument("--ip", required=True, help="IP address of the HSA (dot format)")
+    parser.add_argument("--port", required=True, type=int, help="Port number of the HSA")
     parser.add_argument("--integration_token", required=True, help="Integration token")
 
     args = parser.parse_args()
@@ -86,8 +90,11 @@ def main():
     # ⚠️ Must be called before any other logging calls
     setup_logging(args.log_level, args.log_file)
 
+    # Get authentication token
+    token = get_token(username=args.username, password=args.password, port=args.port)
+
     # Create Node object
-    node = Node(port=args.port_hsa, token=args.token_hsa, ip=args.ip_hsa)
+    node = Node(port=args.port, token=token, ip=args.ip)
 
     # Call leave-cluster-hsa
     response = leave_cluster_hsa(node=node, integration_token=args.integration_token)
