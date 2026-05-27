@@ -34,7 +34,7 @@ def get_token(username: str, password: str, port: int) -> str:
     Raises:
         SystemExit: If the request fails
     """
-    logger.info(f"get_token called with username={username}, port={port}")
+    logger.info("Retrieving authentication token for port={port}")
     
     base_url = f"https://localhost:{port}"
     url = f"{base_url}/api/v3/users/signin"

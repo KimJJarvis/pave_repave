@@ -18,15 +18,15 @@ from pave_repave.get_token import get_token
 logger = logging.getLogger(__name__)
 
 
-def fail_over(node: Node) -> Response:
+def fail_over(node: Node) -> None:
     """
     Call the fail-over endpoint.
 
     Args:
         node: Node object with connection details
 
-    Returns:
-        Response object with message and status code
+    Raises:
+        RuntimeError: If the API returns HTTP 400, LeaderFollower Job Active error, or unexpected response
     """
     base_url = f"https://localhost:{node.port}"
     url = f"{base_url}/api/v3/cluster-manager/fail-over"
@@ -43,26 +43,29 @@ def fail_over(node: Node) -> Response:
     status_message = api_response.get("statusMessage", "")
     error_field = api_response.get("error", "")
 
-    # Determine message and code based on response
+    # Check for HTTP 400 error
+    if http_status == 400:
+        message = (status_message or error_field or "Unknown error").strip()
+        logger.error(f"HTTP 400 Bad Request: {message}")
+        raise RuntimeError(f"fail_over returned 400: {message}")
+
+    # Check for LeaderFollower Job Active error
     if "LeaderFollower Job Active, cannot Fail-Over" in (status_message or error_field):
-        message = "LeaderFollower Job Active, cannot Fail-Over"
-        code = http_status
-    elif status_message == "OKAY: Failover successfully started.":
-        message = "Failover successfully started"
-        code = 200
-    else:
-        # For all other responses, copy the message and use HTTP status code
+        logger.error("LeaderFollower Job Active, cannot Fail-Over")
+        raise RuntimeError("fail_over error: LeaderFollower Job Active, cannot Fail-Over")
+
+    # Check for success message
+    if status_message != "OKAY: Failover successfully started.":
+        # Any other response is unexpected
         message = (
             (status_message or error_field).strip()
             if (status_message or error_field)
             else "Unknown response"
         )
-        code = http_status
+        logger.error(f"Unexpected fail_over response: {message}")
+        raise RuntimeError(f"Unexpected fail_over response: {message}")
 
-    response = Response(message=message, code=code)
-    logger.info(f"Response: {response.message} (code: {response.code})")
-
-    return response
+    logger.info("✓ Failover successfully started")
 
 
 def main():
@@ -95,19 +98,22 @@ def main():
     # ⚠️ Must be called before any other logging calls
     setup_logging(args.log_level, args.log_file)
 
-    # Get authentication token
-    token = get_token(username=args.username, password=args.password, port=args.port)
+    try:
+        # Get authentication token
+        token = get_token(username=args.username, password=args.password, port=args.port)
 
-    # Create Node object
-    node = Node(port=args.port, token=token, ip=args.ip)
+        # Create Node object
+        node = Node(port=args.port, token=token, ip=args.ip)
 
-    # Construct base URL - requests go to localhost with port forwarding
-    base_url = f"https://localhost:{node.port}"
+        # Call fail-over
+        fail_over(node=node)
 
-    # Call fail-over
-    response = fail_over(node=node)
-
-    if response.code == 200:
         print("✓ Operation completed successfully!")
-    else:
-        print(f"⚠ Operation completed with code {response.code}")
+    except RuntimeError as e:
+        logger.error(f"Runtime error: {e}")
+        print(f"✗ Operation failed: {e}")
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        print(f"✗ Operation failed with unexpected error: {e}")
+        sys.exit(1)

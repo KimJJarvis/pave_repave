@@ -33,3 +33,7 @@ class Node(BaseModel):
             raise ValueError(msg)
         return value
 
+    def __str__(self) -> str:
+        """Return string representation of the node."""
+        return f"{self.ip},{self.port}"
+

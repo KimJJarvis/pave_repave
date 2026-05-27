@@ -26,6 +26,9 @@ def get_integration_token(node: Node) -> str:
 
     Returns:
         The integration token string
+    
+    Raises:
+        RuntimeError: If token field is not found in response or HTTP error occurs
     """
     logger.info(f"get_integration_token called with node: ip={node.ip}, port={node.port}")
     base_url = f"https://localhost:{node.port}"
@@ -33,9 +36,21 @@ def get_integration_token(node: Node) -> str:
 
     response = make_single_api_request(url=url, bearer_token=node.token, method="GET")
 
+    # Check for HTTP error status codes
+    if "_http_status_code" in response:
+        status_code = response["_http_status_code"]
+        if status_code == 400:
+            error_msg = response.get('error', 'Unknown error')
+            logger.error(f"HTTP 400 Bad Request: {error_msg}")
+            raise RuntimeError(f"get_integration_token returned HTTP 400: {response}")
+        elif status_code >= 400:
+            error_msg = response.get('error', 'Unknown error')
+            logger.error(f"HTTP {status_code} Error: {error_msg}")
+            raise RuntimeError(f"get_integration_token returned HTTP {status_code}: {response}")
+
     if "token" not in response:
         logger.error(f"'token' field not found in response: {response}")
-        sys.exit(1)
+        raise RuntimeError(f"get_integration_token: 'token' field not found in response")
 
     token = response["token"]
     logger.info("✓ Integration token retrieved")
@@ -68,14 +83,23 @@ def main():
     # ⚠️ Must be called before any other logging calls
     setup_logging(args.log_level, args.log_file)
 
-    # Get authentication token
-    token = get_token(username=args.username, password=args.password, port=args.port)
+    try:
+        # Get authentication token
+        token = get_token(username=args.username, password=args.password, port=args.port)
 
-    # Create Node object
-    node = Node(port=args.port, token=token, ip=args.ip)
+        # Create Node object
+        node = Node(port=args.port, token=token, ip=args.ip)
 
-    # Get integration token
-    integration_token = get_integration_token(node=node)
+        # Get integration token
+        integration_token = get_integration_token(node=node)
 
-    # Output the integration token to stdout
-    print(integration_token)
+        # Output the integration token to stdout
+        print(integration_token)
+    except RuntimeError as e:
+        logger.error(f"Runtime error: {e}")
+        print(f"✗ Operation failed: {e}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        print(f"✗ Operation failed with unexpected error: {e}", file=sys.stderr)
+        sys.exit(1)

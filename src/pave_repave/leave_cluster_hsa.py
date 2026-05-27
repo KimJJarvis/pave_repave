@@ -17,7 +17,7 @@ from pave_repave.get_token import get_token
 logger = logging.getLogger(__name__)
 
 
-def leave_cluster_hsa(node: Node, integration_token: str) -> dict:
+def leave_cluster_hsa(node: Node, integration_token: str) -> None:
     """
     Call the leave-cluster-hsa endpoint.
 
@@ -25,11 +25,8 @@ def leave_cluster_hsa(node: Node, integration_token: str) -> dict:
         node: Node object with connection details
         integration_token: Integration token
     
-    Returns:
-        Response dictionary from the API
-    
     Raises:
-        SystemExit: If the API returns HTTP 400 or other error status
+        RuntimeError: If the API returns HTTP 400 or other error status
     """
     base_url = f"https://localhost:{node.port}"
     url = f"{base_url}/api/v3/cluster-orchestrator/leave-cluster-hsa"
@@ -45,22 +42,25 @@ def leave_cluster_hsa(node: Node, integration_token: str) -> dict:
 
     response = make_single_api_request(url=url, bearer_token=node.token, method="POST", data=data)
     
-    # Check for HTTP error status codes
-    if "_http_status_code" in response:
-        status_code = response["_http_status_code"]
-        if status_code == 400:
-            logger.error(f"HTTP 400 Bad Request: {response.get('error', 'Unknown error')}")
-            sys.exit(1)
-        elif status_code >= 400:
-            logger.error(f"HTTP {status_code} Error: {response.get('error', 'Unknown error')}")
-            sys.exit(1)
+    # Check for HTTP status code (default to 200 if not present)
+    http_status = response.get("_http_status_code", 200)
+    
+    if http_status == 400:
+        error_msg = response.get('error', 'Unknown error')
+        logger.error(f"HTTP 400 Bad Request: {error_msg}")
+        raise RuntimeError(f"leave_cluster_hsa returned HTTP 400: {response}")
+    
+    if http_status != 200:
+        error_msg = response.get('error', 'Unknown error')
+        logger.error(f"HTTP {http_status} Error: {error_msg}")
+        raise RuntimeError(f"leave_cluster_hsa returned unexpected HTTP status {http_status}: {response}")
     
     # Log response
     logger.info(f"leave_cluster_hsa response:")
     logger.info(json.dumps(response, indent=2))
     
-    logger.info(f"✓ leave-cluster-hsa completed: {response.get('status', 'unknown')}")
-    return response
+    status_msg = response.get('status', 'unknown')
+    logger.info(f"✓ leave-cluster-hsa completed: {status_msg}")
 
 
 def main():
@@ -90,13 +90,22 @@ def main():
     # ⚠️ Must be called before any other logging calls
     setup_logging(args.log_level, args.log_file)
 
-    # Get authentication token
-    token = get_token(username=args.username, password=args.password, port=args.port)
+    try:
+        # Get authentication token
+        token = get_token(username=args.username, password=args.password, port=args.port)
 
-    # Create Node object
-    node = Node(port=args.port, token=token, ip=args.ip)
+        # Create Node object
+        node = Node(port=args.port, token=token, ip=args.ip)
 
-    # Call leave-cluster-hsa
-    response = leave_cluster_hsa(node=node, integration_token=args.integration_token)
+        # Call leave-cluster-hsa
+        leave_cluster_hsa(node=node, integration_token=args.integration_token)
 
-    print("✓ Operation completed successfully!")
+        print("✓ Operation completed successfully!")
+    except RuntimeError as e:
+        logger.error(f"Runtime error: {e}")
+        print(f"✗ Operation failed: {e}")
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        print(f"✗ Operation failed with unexpected error: {e}")
+        sys.exit(1)

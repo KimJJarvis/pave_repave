@@ -12,6 +12,7 @@ import logging
 from pave_repave.node import Node
 from pave_repave.make_single_api_request import make_single_api_request
 from pave_repave.utilities import setup_logging
+from pave_repave.get_token import get_token
 
 logger = logging.getLogger(__name__)
 
@@ -29,38 +30,42 @@ def become_hsa(node: Node, ip_peer: str, integration_token: str) -> dict:
         Response dictionary from the API
     
     Raises:
-        SystemExit: If the API returns HTTP 400 or other error status
+        RuntimeError: If the API returns HTTP 400, other error status, or unexpected response
     """
     # Log parameters
-    logger.info(f"become_hsa called with parameters:")
-    logger.info(f"  node.ip: {node.ip}")
-    logger.info(f"  node.port: {node.port}")
-    logger.info(f"  ip_peer: {ip_peer}")
-    logger.info(f"  integration_token: {integration_token[:20]}..." if len(integration_token) > 20 else f"  integration_token: {integration_token}")
+    logger.info(f"become_hsa called on {node}, ip_peer: {ip_peer}")
     
     base_url = f"https://localhost:{node.port}"
     url = f"{base_url}/api/v3/cluster-orchestrator/become-hsa"
-    logger.info(f"Calling become-hsa on {url}...")
 
     data = {"primaryIp": ip_peer, "secondaryIp": node.ip, "token": integration_token}
 
     response = make_single_api_request(url=url, bearer_token=node.token, method="POST", data=data)
     
     # Log response object
-    logger.info(f"become_hsa response: {json.dumps(response, indent=2)}")
+    logger.debug(f"become_hsa response: {json.dumps(response, indent=2)}")
     
-    # Check for HTTP error status codes
-    if "_http_status_code" in response:
-        status_code = response["_http_status_code"]
-        if status_code == 400:
-            logger.error(f"HTTP 400 Bad Request: {response.get('error', 'Unknown error')}")
-            sys.exit(1)
-        elif status_code >= 400:
-            logger.error(f"HTTP {status_code} Error: {response.get('error', 'Unknown error')}")
-            sys.exit(1)
+    # Check for HTTP status code (default to 200 if not present)
+    http_status = response.get("_http_status_code", 200)
     
-    logger.info(f"✓ become-hsa completed: {response.get('status', 'unknown')}")
-    return response
+    if http_status == 400:
+        error_msg = response.get('error', 'Unknown error')
+        logger.error(f"HTTP 400 Bad Request: {error_msg}")
+        raise RuntimeError(f"become_hsa returned HTTP 400: {response}")
+    
+    if http_status != 200:
+        error_msg = response.get('error', 'Unknown error')
+        logger.error(f"HTTP {http_status} Error: {error_msg}")
+        raise RuntimeError(f"become_hsa returned unexpected HTTP status {http_status}: {response}")
+    
+    # Check for success message
+    status_msg = response.get("status", "")
+    if "HSA add successfully initiated" not in status_msg:
+        logger.error(f"Unexpected response status: {status_msg}")
+        raise RuntimeError(f"become_hsa did not return expected success message. Got: {status_msg}")
+    
+    logger.info(f"✓ become-hsa started: {status_msg}")
+
 
 
 def main():
@@ -76,7 +81,10 @@ def main():
         "--log-file", type=str, default=None, help="Log to file instead of console"
     )
     parser.add_argument(
-        "--token", required=True, help="Bearer token for authentication"
+        "--username", required=True, help="Username for authentication"
+    )
+    parser.add_argument(
+        "--password", required=True, help="Password for authentication"
     )
     parser.add_argument("--ip", required=True, help="IP address of the spare node (dot format)")
     parser.add_argument("--port", required=True, type=int, help="Port number of the spare node")
@@ -90,10 +98,22 @@ def main():
     # ⚠️ Must be called before any other logging calls
     setup_logging(args.log_level, args.log_file)
 
-    # Create Node object
-    node = Node(port=args.port, token=args.token, ip=args.ip)
+    try:
+        # Get authentication token
+        token = get_token(username=args.username, password=args.password, port=args.port)
 
-    # Call become-hsa
-    response = become_hsa(node=node, ip_peer=args.ip_peer, integration_token=args.integration_token)
+        # Create Node object
+        node = Node(port=args.port, token=token, ip=args.ip)
 
-    print("✓ Operation completed successfully!")
+        # Call become-hsa
+        response = become_hsa(node=node, ip_peer=args.ip_peer, integration_token=args.integration_token)
+
+        print("✓ Operation completed successfully!")
+    except RuntimeError as e:
+        logger.error(f"Runtime error: {e}")
+        print(f"✗ Operation failed: {e}")
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        print(f"✗ Operation failed with unexpected error: {e}")
+        sys.exit(1)

@@ -138,9 +138,7 @@ def main():
 
     # Print parsed status to console (stdout)
     if status is None:
-        print("\n" + "=" * 60)
-        print("Not found")
-        print("=" * 60)
+        print("Not a peer or HSA")
     else:
         parsed_status = json.dumps(
             {
@@ -151,7 +149,5 @@ def main():
             },
             indent=2,
         )
-        print("\n" + "=" * 60)
         print("Parsed Peer Info Status:")
         print(parsed_status)
-        print("=" * 60)

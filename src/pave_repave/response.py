@@ -12,3 +12,7 @@ class Response:
 
     message: str
     code: int
+
+    def __str__(self) -> str:
+        """Return string representation of the response."""
+        return f"HTTP {self.code} {self.message}"
