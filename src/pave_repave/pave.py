@@ -33,7 +33,7 @@ def main():
     parent_parser = argparse.ArgumentParser(add_help=False)
     parent_parser.add_argument(
         "--log-level",
-        default="INFO",
+        default="ERROR",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Set the logging level",
     )

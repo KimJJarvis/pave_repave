@@ -5,8 +5,8 @@ class AppConfig(BaseSettings):
     host: str = "localhost"
     http_502_max_retries: int = 5
     http_502_retry_delay: int = 30
-    wait_state_max_retries: int = 10
-    wait_state_initial_delay: int = 10
+    wait_state_max_retries: int = 20
+    wait_state_initial_delay: int = 20
     wait_state_retry_delay: int = 30
     wait_state_settle_delay: int = 30
     port_forward: bool = False

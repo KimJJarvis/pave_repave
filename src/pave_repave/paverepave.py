@@ -57,6 +57,7 @@ def precondition(state: int, peer: Node, hsa: Node, spare: Node) -> None:
     if not verify_state(state=target_state, peer=peer, hsa=hsa, spare=spare):
         raise ValueError(f"System is not in state {target_state}. {description}")
     logger.info(f"✓ System verified to be in state {target_state}.")
+    print(f"✓ System verified to be in state {target_state}.")
 
 
 def postcondition(state: int, peer: Node, hsa: Node, spare: Node) -> None:
@@ -74,15 +75,19 @@ def postcondition(state: int, peer: Node, hsa: Node, spare: Node) -> None:
     logger.info(f"Waiting for system to reach state {target_state}. {description}")
     wait_state(state=target_state, peer=peer, hsa=hsa, spare=spare)
     logger.info(f"✓ System verified to be in state {target_state}.")
+    f"✓ System verified to be in state {target_state}."
     print(str_state(peer=peer, hsa=hsa, spare=spare, state=target_state))
-    time.sleep(30)
 
 
 def pave_fail_over(peer: Node, hsa: Node, spare: Node) -> None:
     precondition(state=1, peer=peer, hsa=hsa, spare=spare)
+
     logger.info("Calling fail_over on peer...")
+    print("Calling fail_over on peer...")
     fail_over(node=peer)
     logger.info("✓ fail_over initiated successfully")
+    print("✓ fail_over initiated successfully")
+
     postcondition(state=2, peer=peer, hsa=hsa, spare=spare)
     
 
@@ -91,18 +96,18 @@ def pave_switch_primary_secondary(peer: Node, hsa: Node, spare: Node) -> None:
 
     logger.info("Getting peer info to obtain peer ID...")
     peer_status = peer_info(node=peer)
-
     if peer_status is None:
         raise RuntimeError("Could not find peer information")
-
     id = peer_status.id
     logger.info(f"✓ Peer ID obtained: {id}")
 
-    logger.info("Calling switch_primary_secondary on peer...")
+    logger.info("Calling switch_primary_secondary on HSA...")
+    print("Calling switch_primary_secondary on HSA...")
     switch_primary_secondary(node=peer, id=id)
+    logger.info("✓ switch_primary_secondary initiated successfully")
+    print("✓ switch_primary_secondary initiated successfully")
 
     postcondition(state=3, peer=peer, hsa=hsa, spare=spare)
-
 
 def pave_leave_cluster_hsa(peer: Node, hsa: Node, spare: Node) -> None:
     precondition(state=3, peer=peer, hsa=hsa, spare=spare)
@@ -112,10 +117,12 @@ def pave_leave_cluster_hsa(peer: Node, hsa: Node, spare: Node) -> None:
     logger.info(f"✓ Integration token obtained (length: {len(integration_token)})")
 
     logger.info("Calling leave_cluster_hsa on HSA...")
+    print("Calling leave_cluster_hsa on HSA...")
     leave_cluster_hsa(node=peer, integration_token=integration_token)
+    logger.info("✓ leave_cluster_hsa initiated successfully")
+    print("✓ leave_cluster_hsa initiated successfully")
 
     postcondition(state=4, peer=peer, hsa=hsa, spare=spare)
-    time.sleep(30)
 
 
 def repave_become_hsa(peer: Node, hsa: Node, spare: Node) -> None:
@@ -126,10 +133,12 @@ def repave_become_hsa(peer: Node, hsa: Node, spare: Node) -> None:
     logger.info(f"✓ Integration token obtained (length: {len(integration_token)})")
 
     logger.info("Calling become_hsa on spare...")
+    print("Calling become_hsa on spare...")
     become_hsa(node=spare, ip_peer=hsa.ip, integration_token=integration_token)
+    logger.info("✓ become_hsa initiated successfully")
+    print("✓ become_hsa initiated successfully")
 
     postcondition(state=5, peer=peer, hsa=hsa, spare=spare)
-    time.sleep(30)
 
 
 def repave_fail_over(peer: Node, hsa: Node, spare: Node) -> None:
@@ -138,12 +147,12 @@ def repave_fail_over(peer: Node, hsa: Node, spare: Node) -> None:
     spare.token = hsa.token
 
     logger.info("Calling fail_over on HSA...")
+    print("Calling fail_over on HSA...")
     fail_over(node=hsa)
     logger.info("✓ fail_over initiated successfully")
+    print("✓ fail_over initiated successfully")
 
     postcondition(state=6, peer=peer, hsa=hsa, spare=spare)
-    time.sleep(30)
-
 
 def repave_switch_primary_secondary(peer: Node, hsa: Node, spare: Node) -> None:
     precondition(state=6, peer=peer, hsa=hsa, spare=spare)
@@ -152,15 +161,16 @@ def repave_switch_primary_secondary(peer: Node, hsa: Node, spare: Node) -> None:
 
     logger.info("Getting peer info to obtain peer ID...")
     peer_status = peer_info(node=hsa)
-
     if peer_status is None:
         raise RuntimeError("Could not find peer information")
-
     id = peer_status.id
     logger.info(f"✓ Peer ID obtained: {id}")
 
-    logger.info("Calling switch_primary_secondary on hsa...")
+    logger.info("Calling switch_primary_secondary on HSA...")   
+    print("Calling switch_primary_secondary on HSA...")
     switch_primary_secondary(node=hsa, id=id)
+    logger.info("✓ switch_primary_secondary initiated successfully")
+    print("✓ switch_primary_secondary initiated successfully")
 
     postcondition(state=7, peer=peer, hsa=hsa, spare=spare)
 

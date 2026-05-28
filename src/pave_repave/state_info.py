@@ -325,6 +325,7 @@ def wait_state(state: int, peer: Node, hsa: Node, spare: Node) -> None:
             logger.warning(
                 f"Current state is {current_state}, not {state}. Waiting {config.wait_state_retry_delay} seconds before retry..."
             )
+            print(f"Current state is {current_state}, not {state}. Waiting {config.wait_state_retry_delay} seconds before retry...")
             time.sleep(config.wait_state_retry_delay)
         else:
             current_state = state_info(peer=peer, hsa=hsa, spare=spare)
@@ -371,10 +372,11 @@ def wait_valid_state(peer: Node, hsa: Node, spare: Node) -> int:
         retry_count += 1
         if retry_count < max_retries:
             logger.warning(
-                f"Current state is 0 (invalid). Waiting 30 seconds before retry..."
+                f"Current state is 0 (invalid). Waiting {config.wait_state_retry_delay} seconds before retry..."
             )
+            print(f"Current state is 0 (invalid). Waiting {config.wait_state_retry_delay} seconds before retry...")
             time.sleep(config.wait_state_retry_delay)
-            
+
     time.sleep(config.wait_state_settle_delay)
     
     # If we exit the loop without returning, raise an error
