@@ -32,7 +32,7 @@ def peer_info(node: Node) -> Status | None:
     base_url = f"https://localhost:{node.port}"
     url = f"{base_url}/api/v3/peers?activeAppliance=ALL&disabled=MATCH_ALL&master=MATCH_ALL"
 
-    logger.info(f"Querying peers from {base_url}...")
+    logger.debug(f"Querying peers from {base_url}...")
 
     # Make the API request (GET method)
     response = make_single_api_request(url=url, bearer_token=node.token, method="GET")
@@ -50,7 +50,7 @@ def peer_info(node: Node) -> Status | None:
 
         # Search through the peers list to find a match with the target IP
         target_ip = node.ip
-        logger.info(f"Searching for peer matching target IP: {target_ip}")
+        logger.debug(f"Searching for peer matching target IP: {target_ip}")
 
         for peer in peers:
             # Validate required fields are present
@@ -79,7 +79,7 @@ def peer_info(node: Node) -> Status | None:
 
                 peer_id = peer.get("id", 0)
 
-                logger.info(
+                logger.debug(
                     f"✓ Peer match found: primaryIp={primary_ip}, secondaryIp={secondary_ip}, activeAppliance={active_appliance_str} ({active_appliance}), id={peer_id}"
                 )
 
@@ -91,7 +91,7 @@ def peer_info(node: Node) -> Status | None:
                 )
 
         # No matching peer found
-        logger.info(f"No peer found matching target IP: {target_ip}")
+        logger.debug(f"No peer found matching target IP: {target_ip}")
         return None
 
     except KeyError as e:

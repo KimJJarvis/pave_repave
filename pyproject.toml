@@ -13,13 +13,14 @@ fail_over = "pave_repave.fail_over:main"
 get_integration_token = "pave_repave.get_integration_token:main"
 get_state = "pave_repave.get_state:main"
 leave_cluster_hsa = "pave_repave.leave_cluster_hsa:main"
-pave = "pave_repave.pave:main"
 peer_info = "pave_repave.peer_info:main"
-repave = "pave_repave.repave:main"
 switch_primary_secondary = "pave_repave.switch_primary_secondary:main"
 state_info = "pave_repave.state_info:main"
 paverepave = "pave_repave.paverepave:main"
 get_token = "pave_repave.get_token:main"
+add_hsa = "pave_repave.add_hsa:main"
+remove_hsa = "pave_repave.remove_hsa:main"
+
 
 [build-system]
 requires = ["hatchling"]

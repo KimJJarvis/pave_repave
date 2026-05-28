@@ -23,6 +23,7 @@ from pave_repave.state_info import (
     state_info,
     verify_state,
     wait_state,
+    wait_valid_state,
     state_description,
 )
 from pave_repave.fail_over import fail_over
@@ -32,6 +33,7 @@ from pave_repave.peer_info import peer_info
 from pave_repave.leave_cluster_hsa import leave_cluster_hsa
 from pave_repave.become_hsa import become_hsa
 from pave_repave.get_token import get_token
+from pave_repave.state_info import str_state
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +55,7 @@ def precondition(state: int, peer: Node, hsa: Node, spare: Node) -> None:
     description = state_description(state=target_state)
     if not verify_state(state=target_state, peer=peer, hsa=hsa, spare=spare):
         raise ValueError(f"System is not in state {target_state}. {description}")
-    logger.info(f"✓ System verified to be in state {target_state}. {description}")
+    logger.info(f"✓ System verified to be in state {target_state}.")
 
 
 def postcondition(state: int, peer: Node, hsa: Node, spare: Node) -> None:
@@ -70,7 +72,8 @@ def postcondition(state: int, peer: Node, hsa: Node, spare: Node) -> None:
     description = state_description(state=target_state)
     logger.info(f"Waiting for system to reach state {target_state}. {description}")
     wait_state(state=target_state, peer=peer, hsa=hsa, spare=spare)
-    logger.info(f"✓ System verified to be in state {target_state}. {description}")
+    logger.info(f"✓ System verified to be in state {target_state}.")
+    print(str_state(peer=peer, hsa=hsa, spare=spare, state=target_state))
 
 
 def pave_fail_over(peer: Node, hsa: Node, spare: Node) -> None:
@@ -173,12 +176,14 @@ def paverepave(peer: Node, hsa: Node, spare: Node) -> None:
 
     Raises:
         ValueError: If IP addresses are not unique or system is not in state 1
-        RuntimeError: If peer information cannot be obtained
+        RuntimeError: If peer information cannot be obtained or validation checks fail
     """
     # Verify that all IP addresses are unique
     validate_unique_ips(peer.ip, hsa.ip, spare.ip)
 
-    s = state_info(peer, hsa, spare)
+    # Wait for a valid (non-zero) state
+    s = wait_valid_state(peer=peer, hsa=hsa, spare=spare)
+    print(str_state(peer=peer, hsa=hsa, spare=spare, state=s))
 
     funcs = [
         pave_fail_over,
@@ -254,7 +259,7 @@ def main():
 
         paverepave(peer=peer, hsa=hsa, spare=spare)
 
-        print("✓ Pave/Repave completed successfully!")
+        print("✓ SUCCESS: Pave/Repave completed successfully!")
     except ValueError as e:
         logger.error(f"Validation error: {e}")
         print(f"✗ Pave/Repave failed: {e}")

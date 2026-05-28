@@ -89,9 +89,9 @@ def main():
         "--password", required=True, help="Password for authentication"
     )
     parser.add_argument(
-        "--ip", required=True, help="IP address of the peer to fail-over (dot format)"
+        "--ip_peer", required=True, help="IP address of the peer to fail-over (dot format)"
     )
-    parser.add_argument("--port", required=True, type=int, help="Port number of the peer")
+    parser.add_argument("--port_peer", required=True, type=int, help="Port number of the peer")
 
     args = parser.parse_args()
 
@@ -100,10 +100,10 @@ def main():
 
     try:
         # Get authentication token
-        token = get_token(username=args.username, password=args.password, port=args.port)
+        token = get_token(username=args.username, password=args.password, port=args.port_peer)
 
         # Create Node object
-        node = Node(port=args.port, token=token, ip=args.ip)
+        node = Node(port=args.port_peer, token=token, ip=args.ip_peer)
 
         # Call fail-over
         fail_over(node=node)

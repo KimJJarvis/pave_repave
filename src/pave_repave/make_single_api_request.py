@@ -37,8 +37,8 @@ def make_single_api_request(
         Response data as dictionary
 
     Raises:
-        RuntimeError: If maximum retries (5) are exceeded for 502 errors
-        SystemExit: If the request fails with other errors
+        RuntimeError: If maximum retries (5) are exceeded for 502 errors or network errors
+        ValueError: If authentication fails or JSON decode errors occur
     """
     parsed_url = urllib.parse.urlparse(url)
     port = parsed_url.port
@@ -113,7 +113,7 @@ def make_single_api_request(
                         f"Maximum retries ({max_retries}) exceeded for HTTP 502 Bad Gateway error at {url}"
                     )
 
-            # Exit with error if authentication fails (401 Unauthorized)
+            # Raise exception if authentication fails (401 Unauthorized)
             if e.code == 401:
                 # Check if token is expired or just invalid
                 error_message_lower = error_body.lower()
@@ -122,9 +122,10 @@ def make_single_api_request(
                     or "token expired" in error_message_lower
                 ):
                     logger.error("Bearer token expired")
+                    raise ValueError("Bearer token expired") from e
                 else:
                     logger.error("Invalid bearer token")
-                sys.exit(1)
+                    raise ValueError("Invalid bearer token") from e
 
             # Parse and return the error response so caller can handle it
             try:
@@ -139,18 +140,18 @@ def make_single_api_request(
         except urllib.error.URLError as e:
             logger.error(f"URL Error: {e.reason}")
             logger.error(f"URL: {url}")
-            sys.exit(1)
+            raise RuntimeError(f"URL Error: {e.reason}") from e
         except json.JSONDecodeError as e:
             logger.error(f"JSON Decode Error: {e}")
-            sys.exit(1)
+            raise ValueError(f"JSON Decode Error: {e}") from e
         except TimeoutError as e:
             logger.error("Request timed out after 30 seconds")
             logger.error(f"URL: {url}")
-            sys.exit(1)
+            raise RuntimeError("Request timed out after 30 seconds") from e
         except Exception as e:
             logger.error(f"Unexpected error: {type(e).__name__}: {e}")
             logger.error(f"URL: {url}")
-            sys.exit(1)
+            raise RuntimeError(f"Unexpected error: {type(e).__name__}: {e}") from e
     
     # This should never be reached due to the exception handling above
     raise RuntimeError(f"Unexpected exit from retry loop for {url}")

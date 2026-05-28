@@ -12,6 +12,7 @@ import logging
 from pave_repave.node import Node
 from pave_repave.get_integration_token import get_integration_token
 from pave_repave.leave_cluster_hsa import leave_cluster_hsa
+from pave_repave.peer_info import peer_info
 from pave_repave.utilities import setup_logging
 from pave_repave.get_token import get_token
 
@@ -27,16 +28,78 @@ def remove_hsa(peer: Node, hsa: Node) -> None:
         hsa: Node object for the HSA to be removed
 
     Raises:
-        RuntimeError: If any API call fails
+        RuntimeError: If any API call fails or validation checks fail
     """
     logger.info(f"remove_hsa called with peer: {peer}, hsa: {hsa}")
     
-    logger.info("Get integration token")
-    integration_token = get_integration_token(node=hsa)
-    logger.info(f"✓ Integration token obtained (length: {len(integration_token)})")
+    # Validate peer node
+    logger.debug("Validating peer node...")
+    peer_status = peer_info(node=peer)
+    if peer_status is None:
+        raise RuntimeError(f"Peer node {peer.ip} is not found in cluster")
+    
+    logger.debug(f"Peer status: primary_ip={peer_status.primary_ip}, secondary_ip={peer_status.secondary_ip}, id={peer_status.id}")
+    
+    # Check that primary_ip of peer matches peer.ip
+    if peer_status.primary_ip != peer.ip:
+        raise RuntimeError(
+            f"Peer node primary_ip ({peer_status.primary_ip}) does not match peer.ip ({peer.ip})"
+        )
+    
+    # Check that secondary_ip of peer matches hsa.ip
+    if peer_status.secondary_ip != hsa.ip:
+        raise RuntimeError(
+            f"Peer node secondary_ip ({peer_status.secondary_ip}) does not match hsa.ip ({hsa.ip})"
+        )
+    
+    logger.debug("✓ Peer node validation passed")
+    
+    # Validate HSA node
+    logger.debug("Validating HSA node...")
+    hsa_status = peer_info(node=hsa)
+    if hsa_status is None:
+        raise RuntimeError(f"HSA node {hsa.ip} is not found in cluster")
+    
+    logger.debug(f"HSA status: primary_ip={hsa_status.primary_ip}, secondary_ip={hsa_status.secondary_ip}, id={hsa_status.id}")
+    
+    # Check that primary_ip of hsa matches peer.ip
+    if hsa_status.primary_ip != peer.ip:
+        raise RuntimeError(
+            f"HSA node primary_ip ({hsa_status.primary_ip}) does not match peer.ip ({peer.ip})"
+        )
+    
+    # Check that secondary_ip of hsa matches hsa.ip
+    if hsa_status.secondary_ip != hsa.ip:
+        raise RuntimeError(
+            f"HSA node secondary_ip ({hsa_status.secondary_ip}) does not match hsa.ip ({hsa.ip})"
+        )
+    
+    # Check that peer's active_appliance is 1 (PRIMARY)
+    if peer_status.active_appliance != 1:
+        raise RuntimeError(
+            f"Peer node active_appliance ({peer_status.active_appliance}) is not 1 (PRIMARY)"
+        )
+    
+    # Check that hsa's active_appliance is 1 (PRIMARY)
+    if hsa_status.active_appliance != 1:
+        raise RuntimeError(
+            f"HSA node active_appliance ({hsa_status.active_appliance}) is not 1 (PRIMARY)"
+        )
+    
+    # Check that peer.id == hsa.id (both nodes should have the same cluster ID)
+    if peer_status.id != hsa_status.id:
+        raise RuntimeError(
+            f"Peer node id ({peer_status.id}) does not match HSA node id ({hsa_status.id})"
+        )
+    
+    logger.debug("✓ HSA node validation passed")
+    
+    logger.debug("Get integration token")
+    integration_token = get_integration_token(node=peer)
+    logger.debug(f"✓ Integration token obtained (length: {len(integration_token)})")
 
     logger.info("Calling leave_cluster_hsa on HSA...")
-    leave_cluster_hsa(node=peer, integration_token=integration_token)
+    leave_cluster_hsa(node=hsa, integration_token=integration_token)
     
     logger.info("✓ remove_hsa completed successfully")
 
@@ -62,16 +125,16 @@ def main():
         "--password", required=True, help="Password for authentication"
     )
     parser.add_argument(
-        "--peer_ip", required=True, help="IP address of the peer node (dot format)"
+        "--ip_peer", required=True, help="IP address of the peer node (dot format)"
     )
     parser.add_argument(
-        "--peer_port", required=True, type=int, help="Port number of the peer node"
+        "--port_peer", required=True, type=int, help="Port number of the peer node"
     )
     parser.add_argument(
-        "--hsa_ip", required=True, help="IP address of the HSA to be removed (dot format)"
+        "--ip_hsa", required=True, help="IP address of the HSA to be removed (dot format)"
     )
     parser.add_argument(
-        "--hsa_port", required=True, type=int, help="Port number of the HSA to be removed"
+        "--port_hsa", required=True, type=int, help="Port number of the HSA to be removed"
     )
 
     args = parser.parse_args()
@@ -81,18 +144,18 @@ def main():
 
     try:
         # Get authentication token for peer node
-        logger.info("Authenticating with peer node...")
-        peer_token = get_token(username=args.username, password=args.password, port=args.peer_port)
-        logger.info("✓ Peer authentication successful")
+        logger.debug("Authenticating with peer node...")
+        peer_token = get_token(username=args.username, password=args.password, port=args.port_peer)
+        logger.debug("✓ Peer authentication successful")
 
         # Get authentication token for HSA node
-        logger.info("Authenticating with HSA node...")
-        hsa_token = get_token(username=args.username, password=args.password, port=args.hsa_port)
-        logger.info("✓ HSA authentication successful")
+        logger.debug("Authenticating with HSA node...")
+        hsa_token = get_token(username=args.username, password=args.password, port=args.port_hsa)
+        logger.debug("✓ HSA authentication successful")
 
         # Create Node objects
-        peer_node = Node(port=args.peer_port, token=peer_token, ip=args.peer_ip)
-        hsa_node = Node(port=args.hsa_port, token=hsa_token, ip=args.hsa_ip)
+        peer_node = Node(port=args.port_peer, token=peer_token, ip=args.ip_peer)
+        hsa_node = Node(port=args.port_hsa, token=hsa_token, ip=args.ip_hsa)
 
         # Call remove_hsa
         remove_hsa(peer=peer_node, hsa=hsa_node)

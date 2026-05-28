@@ -39,3 +39,12 @@ class Status(BaseModel):
             raise ValueError(msg)
 
         return self
+
+    def __str__(self) -> str:
+        """Return string representation of Status."""
+        return (
+            f'"active_appliance": {self.active_appliance},\n'
+            f'"primary_ip": {self.primary_ip},\n'
+            f'"secondary_ip": {self.secondary_ip},\n'
+            f'"id": {self.id}'
+        )

@@ -32,9 +32,10 @@ def get_token(username: str, password: str, port: int) -> str:
         The authentication token string
 
     Raises:
-        SystemExit: If the request fails
+        ValueError: If authentication fails or response is invalid
+        RuntimeError: If the request fails due to network or other errors
     """
-    logger.info("Retrieving authentication token for port={port}")
+    logger.debug("Retrieving authentication token for port={port}")
     
     base_url = f"https://localhost:{port}"
     url = f"{base_url}/api/v3/users/signin"
@@ -83,10 +84,10 @@ def get_token(username: str, password: str, port: int) -> str:
             if "token" not in parsed_response:
                 logger.error(f"'token' field not found in response")
                 logger.debug(f"Response data: {json.dumps(parsed_response, indent=2)}")
-                sys.exit(1)
+                raise ValueError("'token' field not found in response")
             
             token = parsed_response["token"]
-            logger.info("✓ Authentication token retrieved")
+            logger.debug("✓ Authentication token retrieved")
             return token
     
     except urllib.error.HTTPError as e:
@@ -95,30 +96,30 @@ def get_token(username: str, password: str, port: int) -> str:
         logger.debug(f"URL: {url}")
         logger.debug(f"Response: {error_body}")
         
-        # Exit with error if authentication fails (401 Unauthorized)
+        # Raise ValueError if authentication fails (401 Unauthorized)
         if e.code == 401:
             logger.error("Authentication failed: Invalid username or password")
-            sys.exit(1)
+            raise ValueError("Authentication failed: Invalid username or password") from e
         
-        # For other errors, log and exit
+        # For other errors, raise RuntimeError
         logger.error(f"Request failed with status code {e.code}")
-        sys.exit(1)
+        raise RuntimeError(f"HTTP request failed with status code {e.code}: {e.reason}") from e
     
     except urllib.error.URLError as e:
         logger.error(f"URL Error: {e.reason}")
         logger.error(f"URL: {url}")
-        sys.exit(1)
+        raise RuntimeError(f"URL Error: {e.reason}") from e
     except json.JSONDecodeError as e:
         logger.error(f"JSON Decode Error: {e}")
-        sys.exit(1)
+        raise ValueError(f"JSON Decode Error: {e}") from e
     except TimeoutError as e:
         logger.error("Request timed out after 30 seconds")
         logger.error(f"URL: {url}")
-        sys.exit(1)
+        raise RuntimeError("Request timed out after 30 seconds") from e
     except Exception as e:
         logger.error(f"Unexpected error: {type(e).__name__}: {e}")
         logger.error(f"URL: {url}")
-        sys.exit(1)
+        raise RuntimeError(f"Unexpected error: {type(e).__name__}: {e}") from e
 
 
 def main():
@@ -150,11 +151,15 @@ def main():
     # ⚠️ Must be called before any other logging calls
     setup_logging(args.log_level, args.log_file)
 
-    # Get authentication token
-    token = get_token(username=args.username, password=args.password, port=args.port)
+    try:
+        # Get authentication token
+        token = get_token(username=args.username, password=args.password, port=args.port)
 
-    # Output the token to stdout
-    print(token)
+        # Output the token to stdout
+        print(token)
+    except (ValueError, RuntimeError) as e:
+        logger.error(f"Failed to retrieve token: {e}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -133,13 +133,3 @@ def validate_unique_ips(*ips: str) -> None:
         )
 
 
-def exit_with_error(message: str) -> None:
-    """
-    Log an error message and exit with code 1.
-
-    Args:
-        message: Error message to display
-    """
-    logger.error(message)
-    sys.exit(1)
-
