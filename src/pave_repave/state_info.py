@@ -24,6 +24,24 @@ from pave_repave.utilities import (
 
 logger = logging.getLogger(__name__)
 
+def get_status_tuple(state: int) -> tuple[str, str, str]:
+    if state == 1:
+        return ("active primary","passive secondary","spare")
+    elif state == 2:
+        return ("passive primary","active secondary","spare")       
+    elif state == 3:
+        return ("passive secondary", "active primary", "spare")
+    elif state == 4:
+        return ("retired", "active primary", "spare")
+    elif state == 5:
+        return ("retired", "active primary", "passive secondary")
+    elif state == 6:
+        return ("retired", "passive primary", "active secondary")
+    elif state == 7:
+        return ("retired", "passive secondary", "active primary")
+    else: 
+        return ("unkown", "unknown", "unknown")
+
 
 def str_state(peer: Node, hsa: Node, spare: Node, state: int) -> str:
     """
@@ -80,51 +98,18 @@ def str_state(peer: Node, hsa: Node, spare: Node, state: int) -> str:
         lines.append(row)
     
     # Add status row with state information
-    state_tuple = get_state(state)
-    status_row = f"{'status':<{col1_width}} {state_tuple[0]:<{col2_width}} {state_tuple[1]:<{col3_width}} {state_tuple[2]:<{col4_width}}"
+    status_tuple = get_status_tuple(state)
+    status_row = f"{'status':<{col1_width}} {status_tuple[0]:<{col2_width}} {status_tuple[1]:<{col3_width}} {status_tuple[2]:<{col4_width}}"
     lines.append(status_row)
     
     return "\n".join(lines)
 
-def get_state(state: int) -> tuple[str, str, str]:
-    if state == 1:
-        return ("active primary","passive secondary","spare")
-    elif state == 2:
-        return ("passive primary","active secondary","spare")       
-    elif state == 3:
-        return ("passive secondary", "active primary", "spare")
-    elif state == 4:
-        return ("retired", "active primary", "spare")
-    elif state == 5:
-        return ("retired", "active primary", "passive secondary")
-    elif state == 6:
-        return ("retired", "passive primary", "active secondary")
-    elif state == 7:
-        return ("retired", "passive secondary", "active primary")
-    else: 
-        return ("unkown", "unknown", "unknown")
-
-def state_description(state: int) -> str:
-    """
-    Return the description for a cluster state.
-    """
-    descriptions = {
-        1: "Peer is active primary. HSA is passive secondary. Peer and HSA are synchronised. Spare is spare.",
-        2: "Peer is passive primary. HSA is active secondary. Peer and HSA are synchronised. Spare is spare.",
-        3: "HSA is active primary. Peer is passive secondary. Peer and HSA are synchronised. Spare is spare.",
-        4: "HSA is active primary. Peer is retired. Spare is spare.",
-        5: "HSA is active primary. Spare is passive secondary. HSA and Spare are synchronised. Peer is retired.",
-        6: "HSA is passive primary. Spare is active secondary. HSA and Spare are synchronised. Peer is retired.",
-        7: "Spare is active primary. HSA is passive secondary. HSA and Spare are synchronised. Peer is retired.",
-    }
-    return descriptions.get(state, "Unknown state")
 
 
 def state_info(peer: Node, hsa: Node, spare: Node) -> int:
     """
     Determine the current state of the peer/HSA cluster.
     """
-
     peer_status_on_peer = peer_info(node=peer)
     hsa_status_on_hsa = peer_info(node=hsa)
 

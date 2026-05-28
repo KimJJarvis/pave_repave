@@ -25,7 +25,6 @@ from pave_repave.state_info import (
     verify_state,
     wait_state,
     wait_valid_state,
-    state_description,
 )
 from pave_repave.fail_over import fail_over
 from pave_repave.switch_primary_secondary import switch_primary_secondary
@@ -53,9 +52,8 @@ def precondition(state: int, peer: Node, hsa: Node, spare: Node) -> None:
         ValueError: If system is not in the expected state
     """
     target_state = state
-    description = state_description(state=target_state)
     if not verify_state(state=target_state, peer=peer, hsa=hsa, spare=spare):
-        raise ValueError(f"System is not in state {target_state}. {description}")
+        raise ValueError(f"System is not in state {target_state}.")
     logger.info(f"✓ System verified to be in state {target_state}.")
     print(f"✓ System verified to be in state {target_state}.")
 
@@ -71,11 +69,10 @@ def postcondition(state: int, peer: Node, hsa: Node, spare: Node) -> None:
         spare: Spare node
     """
     target_state = state
-    description = state_description(state=target_state)
-    logger.info(f"Waiting for system to reach state {target_state}. {description}")
+    logger.info(f"Waiting for system to reach state {target_state}.")
     wait_state(state=target_state, peer=peer, hsa=hsa, spare=spare)
     logger.info(f"✓ System verified to be in state {target_state}.")
-    f"✓ System verified to be in state {target_state}."
+    print(f"✓ System verified to be in state {target_state}.")
     print(str_state(peer=peer, hsa=hsa, spare=spare, state=target_state))
 
 
