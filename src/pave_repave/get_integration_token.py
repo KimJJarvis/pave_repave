@@ -13,6 +13,7 @@ from pave_repave.node import Node
 from pave_repave.make_single_api_request import make_single_api_request
 from pave_repave.utilities import setup_logging
 from pave_repave.get_token import get_token
+from pave_repave.config import config
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,8 @@ def get_integration_token(node: Node) -> str:
         RuntimeError: If token field is not found in response or HTTP error occurs
     """
     logger.info(f"get_integration_token called with node: ip={node.ip}, port={node.port}")
-    base_url = f"https://localhost:{node.port}"
+    host = config.host if config.port_forward else node.ip
+    base_url = f"https://{host}:{node.port}"
     url = f"{base_url}/api/v3/cluster-orchestrator/integration-token"
 
     response = make_single_api_request(url=url, bearer_token=node.token, method="GET")

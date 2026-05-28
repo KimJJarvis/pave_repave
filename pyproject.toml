@@ -5,6 +5,7 @@ description = "HSA pave/repave utilities"
 requires-python = ">=3.12"
 dependencies = [
     "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.1",
 ]
 
 [project.scripts]
@@ -20,6 +21,7 @@ paverepave = "pave_repave.paverepave:main"
 get_token = "pave_repave.get_token:main"
 add_hsa = "pave_repave.add_hsa:main"
 remove_hsa = "pave_repave.remove_hsa:main"
+pave = "pave_repave.pave:main"
 
 
 [build-system]

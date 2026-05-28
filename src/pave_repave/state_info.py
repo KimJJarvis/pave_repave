@@ -11,6 +11,7 @@ import sys
 import time
 import logging
 
+from pave_repave.config import config
 from pave_repave.node import Node
 from pave_repave.peer_info import peer_info
 from pave_repave.get_token import get_token
@@ -302,12 +303,12 @@ def wait_state(state: int, peer: Node, hsa: Node, spare: Node) -> None:
     Wait for the system to reach the specified state.
     Calls verify_state() repeatedly until the desired state is reached.
     """
-    max_retries = 10  # Maximum number of retries
+    max_retries = config.wait_state_max_retries
     retry_count = 0
 
     logger.debug(f"Waiting for state {state}...")
 
-    time.sleep(10) # Wait for process to start
+    time.sleep(config.wait_state_initial_delay)
     while retry_count < max_retries:
         if retry_count > 0:
             logger.debug(f"Retry attempt {retry_count}/{max_retries}...")
@@ -322,14 +323,15 @@ def wait_state(state: int, peer: Node, hsa: Node, spare: Node) -> None:
         if retry_count < max_retries:
             current_state = state_info(peer=peer, hsa=hsa, spare=spare)
             logger.warning(
-                f"Current state is {current_state}, not {state}. Waiting 30 seconds before retry..."
+                f"Current state is {current_state}, not {state}. Waiting {config.wait_state_retry_delay} seconds before retry..."
             )
-            time.sleep(30) # Wait for process
+            time.sleep(config.wait_state_retry_delay)
         else:
             current_state = state_info(peer=peer, hsa=hsa, spare=spare)
             raise RuntimeError(
                 f"wait_state failed: State {state} not reached after maximum retries (current state: {current_state})"
             )
+    time.sleep(config.wait_state_settle_delay)
 
 
 def wait_valid_state(peer: Node, hsa: Node, spare: Node) -> int:
@@ -348,12 +350,12 @@ def wait_valid_state(peer: Node, hsa: Node, spare: Node) -> int:
     Raises:
         RuntimeError: If a valid state is not reached after maximum retries
     """
-    max_retries = 10  # Maximum number of retries
+    max_retries = config.wait_state_max_retries
     retry_count = 0
 
     logger.debug("Waiting for valid (non-zero) state...")
 
-    time.sleep(10)  # Wait for process to start
+    time.sleep(config.wait_state_initial_delay)
     while retry_count < max_retries:
         if retry_count > 0:
             logger.debug(f"Retry attempt {retry_count}/{max_retries}...")
@@ -371,7 +373,9 @@ def wait_valid_state(peer: Node, hsa: Node, spare: Node) -> int:
             logger.warning(
                 f"Current state is 0 (invalid). Waiting 30 seconds before retry..."
             )
-            time.sleep(30)  # Wait for process
+            time.sleep(config.wait_state_retry_delay)
+            
+    time.sleep(config.wait_state_settle_delay)
     
     # If we exit the loop without returning, raise an error
     raise RuntimeError(

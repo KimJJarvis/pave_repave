@@ -13,6 +13,7 @@ from pave_repave.node import Node
 from pave_repave.make_single_api_request import make_single_api_request
 from pave_repave.utilities import setup_logging
 from pave_repave.get_token import get_token
+from pave_repave.config import config
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,8 @@ def become_hsa(node: Node, ip_peer: str, integration_token: str) -> dict:
     # Log parameters
     logger.info(f"become_hsa called on {node}, ip_peer: {ip_peer}")
     
-    base_url = f"https://localhost:{node.port}"
+    host = config.host if config.port_forward else node.ip
+    base_url = f"https://{host}:{node.port}"
     url = f"{base_url}/api/v3/cluster-orchestrator/become-hsa"
 
     data = {"primaryIp": ip_peer, "secondaryIp": node.ip, "token": integration_token}

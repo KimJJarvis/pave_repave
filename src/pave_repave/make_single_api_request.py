@@ -15,6 +15,8 @@ import logging
 import time
 from typing import Dict, Any, Optional
 
+from pave_repave.config import config
+
 logger = logging.getLogger(__name__)
 
 
@@ -37,7 +39,7 @@ def make_single_api_request(
         Response data as dictionary
 
     Raises:
-        RuntimeError: If maximum retries (5) are exceeded for 502 errors or network errors
+        RuntimeError: If maximum retries are exceeded for 502 errors or network errors
         ValueError: If authentication fails or JSON decode errors occur
     """
     parsed_url = urllib.parse.urlparse(url)
@@ -70,8 +72,8 @@ def make_single_api_request(
         request_data = json.dumps(data).encode("utf-8")
 
     # Retry logic for 502 errors
-    max_retries = 5
-    retry_delay = 30  # seconds
+    max_retries = config.http_502_max_retries
+    retry_delay = config.http_502_retry_delay
     
     for attempt in range(max_retries):
         # Create request (needs to be recreated for each attempt)

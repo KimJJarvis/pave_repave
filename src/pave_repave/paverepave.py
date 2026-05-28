@@ -10,6 +10,7 @@ import sys
 import time
 import logging
 
+from pave_repave.config import config
 from pave_repave.node import Node
 from pave_repave.peer_info import peer_info
 from pave_repave.utilities import (
@@ -74,6 +75,7 @@ def postcondition(state: int, peer: Node, hsa: Node, spare: Node) -> None:
     wait_state(state=target_state, peer=peer, hsa=hsa, spare=spare)
     logger.info(f"✓ System verified to be in state {target_state}.")
     print(str_state(peer=peer, hsa=hsa, spare=spare, state=target_state))
+    time.sleep(30)
 
 
 def pave_fail_over(peer: Node, hsa: Node, spare: Node) -> None:
@@ -82,8 +84,7 @@ def pave_fail_over(peer: Node, hsa: Node, spare: Node) -> None:
     fail_over(node=peer)
     logger.info("✓ fail_over initiated successfully")
     postcondition(state=2, peer=peer, hsa=hsa, spare=spare)
-    time.sleep(30)
-
+    
 
 def pave_switch_primary_secondary(peer: Node, hsa: Node, spare: Node) -> None:
     precondition(state=2, peer=peer, hsa=hsa, spare=spare)
@@ -101,7 +102,6 @@ def pave_switch_primary_secondary(peer: Node, hsa: Node, spare: Node) -> None:
     switch_primary_secondary(node=peer, id=id)
 
     postcondition(state=3, peer=peer, hsa=hsa, spare=spare)
-    time.sleep(30)
 
 
 def pave_leave_cluster_hsa(peer: Node, hsa: Node, spare: Node) -> None:
