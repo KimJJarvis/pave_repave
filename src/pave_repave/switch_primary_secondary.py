@@ -55,9 +55,9 @@ def switch_primary_secondary(node: Node, id: int) -> None:
             status_message or error_field
         ):
             logger.warning(
-                "⚠ LeaderFollower Job Active, waiting 30 seconds before retry..."
+                f"⚠ LeaderFollower Job Active, waiting {config.switch_primary_secondary_retry_delay} seconds before retry..."
             )
-            time.sleep(30)
+            time.sleep(config.switch_primary_secondary_retry_delay)
             continue
 
         # Check for fail over not yet complete - retry after delay
@@ -65,9 +65,9 @@ def switch_primary_secondary(node: Node, id: int) -> None:
             status_message or error_field or message_field
         ):
             logger.warning(
-                "⚠ Fail over not yet complete, waiting 30 seconds before retry..."
+                f"⚠ Fail over not yet complete, waiting {config.switch_primary_secondary_retry_delay} seconds before retry..."
             )
-            time.sleep(30)
+            time.sleep(config.switch_primary_secondary_retry_delay)
             continue
 
         # Check for other 400 errors

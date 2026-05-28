@@ -74,7 +74,7 @@ def get_token(username: str, password: str, port: int) -> str:
     try:
         # Make the request with timeout
         with urllib.request.urlopen(
-            request, context=ssl_context, timeout=30
+            request, context=ssl_context, timeout=config.http_timeout_value
         ) as response:
             logger.debug(f"Response status: {response.status}")
             response_data = response.read().decode("utf-8")
@@ -178,7 +178,7 @@ def get_authentication_token(username: str, password: str, ip: str, port: int) -
     try:
         # Make the request with timeout
         with urllib.request.urlopen(
-            request, context=ssl_context, timeout=30
+            request, context=ssl_context, timeout=config.http_timeout_value
         ) as response:
             logger.debug(f"Response status: {response.status}")
             response_data = response.read().decode("utf-8")
