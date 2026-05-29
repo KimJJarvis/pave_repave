@@ -8,54 +8,70 @@ import argparse
 import sys
 import json
 import logging
+import time
 
 from pave_repave.node import Node
 from pave_repave.response import Response
 from pave_repave.make_single_api_request import make_single_api_request
 from pave_repave.utilities import setup_logging
 from pave_repave.get_token import get_token
+from pave_repave.config import config
 
 logger = logging.getLogger(__name__)
 
 
 def fail_over(node: Node) -> None:
     """
-    Call the fail-over endpoint.
+    Call the fail-over endpoint with retry logic.
 
     Args:
         node: Node object with connection details
 
     Raises:
-        RuntimeError: If the API returns HTTP 400, LeaderFollower Job Active error, or unexpected response
+        RuntimeError: If the API returns HTTP 400 or unexpected response, or max retries exceeded
     """
     base_url = f"https://localhost:{node.port}"
     url = f"{base_url}/api/v3/cluster-manager/fail-over"
     logger.info(f"fail_over called - Node(port={node.port}, ip={node.ip})")
 
     data = {"peerIp": node.ip}
+    retry_count = 0
+    max_retries = config.fail_over_max_retries
 
-    api_response = make_single_api_request(url=url, bearer_token=node.token, method="POST", data=data)
+    while retry_count < max_retries:
+        api_response = make_single_api_request(url=url, bearer_token=node.token, method="POST", data=data)
 
-    # Get HTTP status code if present (added by make_single_api_request for error responses)
-    http_status = api_response.get("_http_status_code", 200)
+        # Get HTTP status code if present (added by make_single_api_request for error responses)
+        http_status = api_response.get("_http_status_code", 200)
 
-    # Parse the response - check statusMessage and error fields
-    status_message = api_response.get("statusMessage", "")
-    error_field = api_response.get("error", "")
+        # Parse the response - check statusMessage and error fields
+        status_message = api_response.get("statusMessage", "")
+        error_field = api_response.get("error", "")
 
-    # Check for HTTP 400 error
-    if http_status == 400:
-        message = (status_message or error_field or "Unknown error").strip()
-        logger.error(f"HTTP 400 Bad Request: {message}")
-        raise RuntimeError(f"fail_over returned 400: {message}")
+        # Check for LeaderFollower Job Active - retry after delay
+        if "LeaderFollower Job Active, cannot Fail-Over" in (status_message or error_field):
+            retry_count += 1
+            if retry_count < max_retries:
+                logger.warning(
+                    f"⚠ LeaderFollower Job Active, waiting {config.fail_over_retry_delay} seconds before retry (attempt {retry_count}/{max_retries})..."
+                )
+                time.sleep(config.fail_over_retry_delay)
+                continue
+            else:
+                logger.error(f"Max retries ({max_retries}) exceeded while waiting for LeaderFollower Job to complete")
+                raise RuntimeError(f"fail_over failed: Max retries exceeded - LeaderFollower Job still active")
 
-    # Check for LeaderFollower Job Active error
-    if "LeaderFollower Job Active, cannot Fail-Over" in (status_message or error_field):
-        logger.error("LeaderFollower Job Active, cannot Fail-Over")
-        raise RuntimeError("fail_over error: LeaderFollower Job Active, cannot Fail-Over")
+        # Check for HTTP 400 error
+        if http_status == 400:
+            message = (status_message or error_field or "Unknown error").strip()
+            logger.error(f"HTTP 400 Bad Request: {message}")
+            raise RuntimeError(f"fail_over returned 400: {message}")
 
-    # Check for success message
-    if status_message != "OKAY: Failover successfully started.":
+        # Check for success message
+        if status_message == "OKAY: Failover successfully started.":
+            logger.info("✓ Failover successfully started")
+            return
+
         # Any other response is unexpected
         message = (
             (status_message or error_field).strip()
@@ -64,8 +80,10 @@ def fail_over(node: Node) -> None:
         )
         logger.error(f"Unexpected fail_over response: {message}")
         raise RuntimeError(f"Unexpected fail_over response: {message}")
-
-    logger.info("✓ Failover successfully started")
+    
+    # If we exit the loop without returning, we've exceeded max retries
+    logger.error(f"Max retries ({max_retries}) exceeded")
+    raise RuntimeError(f"fail_over failed: Max retries exceeded")
 
 
 def main():

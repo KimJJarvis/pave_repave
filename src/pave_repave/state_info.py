@@ -94,6 +94,12 @@ def str_state(peer: Node, hsa: Node, spare: Node, state: int) -> str:
         hsa_value = getattr(hsa_status, field, "N/A") if hsa_status else "N/A"
         spare_value = getattr(spare_status, field, "N/A") if spare_status else "N/A"
         
+        # Convert active_appliance integer values to readable strings
+        if field == "active_appliance":
+            peer_value = "Primary" if peer_value == 1 else ("Secondary" if peer_value == 2 else "N/A")
+            hsa_value = "Primary" if hsa_value == 1 else ("Secondary" if hsa_value == 2 else "N/A")
+            spare_value = "Primary" if spare_value == 1 else ("Secondary" if spare_value == 2 else "N/A")
+        
         row = f"{field:<{col1_width}} {str(peer_value):<{col2_width}} {str(hsa_value):<{col3_width}} {str(spare_value):<{col4_width}}"
         lines.append(row)
     

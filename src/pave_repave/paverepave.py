@@ -172,6 +172,37 @@ def repave_switch_primary_secondary(peer: Node, hsa: Node, spare: Node) -> None:
     postcondition(state=7, peer=peer, hsa=hsa, spare=spare)
 
 
+def repave(peer: Node, hsa: Node, spare: Node) -> None:
+    """
+    Perform repave operation on the cluster (states 1-5).
+
+    Args:
+        peer: Peer node
+        hsa: HSA node
+        spare: Spare node
+
+    Raises:
+        ValueError: If IP addresses are not unique or system is not in state 4-7
+        RuntimeError: If peer information cannot be obtained or validation checks fail
+    """
+    # Verify that all IP addresses are unique
+    validate_unique_ips(peer.ip, hsa.ip, spare.ip)
+
+    # Wait for a valid (non-zero) state
+    s = wait_valid_state(peer=peer, hsa=hsa, spare=spare)
+    print(str_state(peer=peer, hsa=hsa, spare=spare, state=s))
+
+    funcs = [
+        pave_fail_over,
+        pave_switch_primary_secondary,
+        pave_leave_cluster_hsa,
+        repave_become_hsa,
+    ]
+
+    for f in funcs[s - 1 :] if 1 <= s <= len(funcs) else []:
+        f(peer=peer, hsa=hsa, spare=spare)
+
+
 def paverepave(peer: Node, hsa: Node, spare: Node) -> None:
     """
     Perform pave/repave operation on the cluster.
@@ -201,7 +232,7 @@ def paverepave(peer: Node, hsa: Node, spare: Node) -> None:
         repave_switch_primary_secondary,
     ]
 
-    for f in funcs[s - 1 :] if 1 <= s <= 6 else []:
+    for f in funcs[s - 1 :] if 1 <= s <= len(funcs) else []:
         f(peer=peer, hsa=hsa, spare=spare)
 
 

@@ -21,7 +21,7 @@ from pave_repave.leave_cluster_hsa import leave_cluster_hsa
 from pave_repave.add_hsa import add_hsa
 from pave_repave.remove_hsa import remove_hsa
 from pave_repave.state_info import state_info, str_state
-from pave_repave.paverepave import paverepave
+from pave_repave.paverepave import paverepave, repave
 from pave_repave.config import config
 
 logger = logging.getLogger(__name__)
@@ -45,6 +45,78 @@ def main():
     )
     parent_parser.add_argument(
         "--password", required=True, help="Password for authentication"
+    )
+    parent_parser.add_argument(
+        "--host",
+        type=str,
+        default=None,
+        help="Override config.host"
+    )
+    parent_parser.add_argument(
+        "--http_502_max_retries",
+        type=int,
+        default=None,
+        help="Override config.http_502_max_retries"
+    )
+    parent_parser.add_argument(
+        "--http_502_retry_delay",
+        type=int,
+        default=None,
+        help="Override config.http_502_retry_delay"
+    )
+    parent_parser.add_argument(
+        "--http_timeout_value",
+        type=int,
+        default=None,
+        help="Override config.http_timeout_value"
+    )
+    parent_parser.add_argument(
+        "--wait_state_max_retries",
+        type=int,
+        default=None,
+        help="Override config.wait_state_max_retries"
+    )
+    parent_parser.add_argument(
+        "--wait_state_initial_delay",
+        type=int,
+        default=None,
+        help="Override config.wait_state_initial_delay"
+    )
+    parent_parser.add_argument(
+        "--wait_state_retry_delay",
+        type=int,
+        default=None,
+        help="Override config.wait_state_retry_delay"
+    )
+    parent_parser.add_argument(
+        "--wait_state_settle_delay",
+        type=int,
+        default=None,
+        help="Override config.wait_state_settle_delay"
+    )
+    parent_parser.add_argument(
+        "--switch_primary_secondary_max_retries",
+        type=int,
+        default=None,
+        help="Override config.switch_primary_secondary_max_retries"
+    )
+    parent_parser.add_argument(
+        "--switch_primary_secondary_retry_delay",
+        type=int,
+        default=None,
+        help="Override config.switch_primary_secondary_retry_delay"
+    )
+    parent_parser.add_argument(
+        "--fail_over_max_retries",
+        type=int,
+        default=None,
+        help="Override config.fail_over_max_retries"
+    )
+    parent_parser.add_argument(
+        "--fail_over_retry_delay",
+        type=int,
+        default=None,
+        help="Override config.fail_over_retry_delay"
     )
     parent_parser.add_argument(
         "--port_forward",
@@ -353,13 +425,70 @@ def main():
         required=True,
         help="Port number for spare node"
     )
+    
+    # repave subcommand
+    repave_parser = subparsers.add_parser(
+        "repave",
+        parents=[parent_parser],
+        help="Perform repave operation on the cluster"
+    )
+    repave_parser.add_argument(
+        "--ip_peer",
+        required=True,
+        help="IP address of the peer node (dot format)"
+    )
+    repave_parser.add_argument(
+        "--port_peer",
+        type=int,
+        required=True,
+        help="Port number for peer node"
+    )
+    repave_parser.add_argument(
+        "--ip_hsa",
+        required=True,
+        help="IP address of the HSA node (dot format)"
+    )
+    repave_parser.add_argument(
+        "--port_hsa",
+        type=int,
+        required=True,
+        help="Port number for HSA node"
+    )
+    repave_parser.add_argument(
+        "--ip_spare",
+        required=True,
+        help="IP address of the spare node"
+    )
+    repave_parser.add_argument(
+        "--port_spare",
+        type=int,
+        required=True,
+        help="Port number for spare node"
+    )
 
     args = parser.parse_args()
 
-    # Set port_forward in config if specified
+    config_overrides = {
+        "host": args.host,
+        "http_502_max_retries": args.http_502_max_retries,
+        "http_502_retry_delay": args.http_502_retry_delay,
+        "http_timeout_value": args.http_timeout_value,
+        "wait_state_max_retries": args.wait_state_max_retries,
+        "wait_state_initial_delay": args.wait_state_initial_delay,
+        "wait_state_retry_delay": args.wait_state_retry_delay,
+        "wait_state_settle_delay": args.wait_state_settle_delay,
+        "switch_primary_secondary_max_retries": args.switch_primary_secondary_max_retries,
+        "switch_primary_secondary_retry_delay": args.switch_primary_secondary_retry_delay,
+        "fail_over_max_retries": args.fail_over_max_retries,
+        "fail_over_retry_delay": args.fail_over_retry_delay,
+    }
+
+    for config_key, config_value in config_overrides.items():
+        if config_value is not None:
+            setattr(config, config_key, config_value)
+
     if args.port_forward:
         config.port_forward = True
-        logger.debug("Port forwarding enabled via --port_forward flag")
     
     # ⚠️ Must be called before any other logging calls
     setup_logging(args.log_level, args.log_file)
@@ -527,7 +656,23 @@ def main():
             paverepave(peer=peer, hsa=hsa, spare=spare)
             
             print("✓ SUCCESS: Pave/Repave completed successfully!")
-    
+
+        elif args.command == "repave":
+            # Get authentication tokens for each node
+            token_peer = get_token(username=args.username, password=args.password, port=args.port_peer)
+            token_hsa = get_token(username=args.username, password=args.password, port=args.port_hsa)
+            token_spare = get_token(username=args.username, password=args.password, port=args.port_spare)
+            
+            # Construct Node objects
+            peer = Node(port=args.port_peer, token=token_peer, ip=args.ip_peer)
+            hsa = Node(port=args.port_hsa, token=token_hsa, ip=args.ip_hsa)
+            spare = Node(port=args.port_spare, token=token_spare, ip=args.ip_spare)
+            
+            # Call repave
+            repave(peer=peer, hsa=hsa, spare=spare)
+            
+            print("✓ SUCCESS: Repave completed successfully!")
+
     except ValueError as e:
         logger.error(f"Validation error: {e}")
         print(f"✗ Operation failed: {e}", file=sys.stderr)
