@@ -18,9 +18,9 @@ from pave_repave.fail_over import fail_over
 from pave_repave.switch_primary_secondary import switch_primary_secondary
 from pave_repave.become_hsa import become_hsa
 from pave_repave.leave_cluster_hsa import leave_cluster_hsa
-from pave_repave.add_hsa import add_hsa
+from pave_repave.add_hsa import add_hsa, add_new_hsa
 from pave_repave.remove_hsa import remove_hsa
-from pave_repave.state_info import state_info, str_state
+from pave_repave.state_info import get_state3, state3_table, get_state2, state2_table, precondition2, postcondition2
 from pave_repave.paverepave import paverepave, repave
 from pave_repave.config import config
 
@@ -311,10 +311,34 @@ def main():
         required=True,
         help="Port number of the spare node"
     )
-    add_hsa_parser.add_argument(
-        "--new_cluster",
-        action="store_true",
-        help="Create a new cluster (validates that both peer and spare are not in any cluster)"
+    
+    # add_new_hsa subcommand
+    add_new_hsa_parser = subparsers.add_parser(
+        "add_new_hsa",
+        parents=[parent_parser],
+        help="Add an HSA to create a new cluster"
+    )
+    add_new_hsa_parser.add_argument(
+        "--ip_peer",
+        required=True,
+        help="IP address of the peer HSA node (dot format)"
+    )
+    add_new_hsa_parser.add_argument(
+        "--port_peer",
+        type=int,
+        required=True,
+        help="Port number of the peer HSA node"
+    )
+    add_new_hsa_parser.add_argument(
+        "--ip_spare",
+        required=True,
+        help="IP address of the spare node (dot format)"
+    )
+    add_new_hsa_parser.add_argument(
+        "--port_spare",
+        type=int,
+        required=True,
+        help="Port number of the spare node"
     )
     
     # remove_hsa subcommand
@@ -344,6 +368,35 @@ def main():
         type=int,
         required=True,
         help="Port number of the HSA to be removed"
+    )
+    
+    # state2 subcommand
+    state2_parser = subparsers.add_parser(
+        "state2",
+        parents=[parent_parser],
+        help="Determine the current state of the peer/HSA cluster (2-node)"
+    )
+    state2_parser.add_argument(
+        "--ip_peer",
+        required=True,
+        help="IP address of the peer node (dot format)"
+    )
+    state2_parser.add_argument(
+        "--port_peer",
+        type=int,
+        required=True,
+        help="Port number for peer node"
+    )
+    state2_parser.add_argument(
+        "--ip_hsa",
+        required=True,
+        help="IP address of the HSA node (dot format)"
+    )
+    state2_parser.add_argument(
+        "--port_hsa",
+        type=int,
+        required=True,
+        help="Port number for HSA node"
     )
     
     # state_info subcommand
@@ -599,8 +652,26 @@ def main():
             peer_node = Node(port=args.port_peer, token=peer_token, ip=args.ip_peer)
             spare_node = Node(port=args.port_spare, token=spare_token, ip=args.ip_spare)
             
-            # Call add_hsa
-            add_hsa(peer=peer_node, spare=spare_node, new_cluster=args.new_cluster)
+            precondition2(state=2, peer=peer_node, hsa=spare_node)
+            add_hsa(peer=peer_node, spare=spare_node)
+            postcondition2(state=3, peer=peer_node, hsa=spare_node)
+            
+            print("✓ Operation completed successfully!")
+        
+        elif args.command == "add_new_hsa":
+            # Get authentication token for peer node
+            peer_token = get_token(username=args.username, password=args.password, port=args.port_peer)
+            
+            # Get authentication token for spare node
+            spare_token = get_token(username=args.username, password=args.password, port=args.port_spare)
+            
+            # Create Node objects
+            peer_node = Node(port=args.port_peer, token=peer_token, ip=args.ip_peer)
+            spare_node = Node(port=args.port_spare, token=spare_token, ip=args.ip_spare)
+            
+            precondition2(state=1, peer=peer_node, hsa=spare_node)
+            add_new_hsa(peer=peer_node, spare=spare_node)
+            postcondition2(state=3, peer=peer_node, hsa=spare_node)
             
             print("✓ Operation completed successfully!")
         
@@ -616,10 +687,32 @@ def main():
             hsa_node = Node(port=args.port_hsa, token=hsa_token, ip=args.ip_hsa)
             
             # Call remove_hsa
+            postcondition2(state=3, peer=peer_node, hsa=hsa_node)
             remove_hsa(peer=peer_node, hsa=hsa_node)
+            postcondition2(state=2, peer=peer_node, hsa=hsa_node)
             
             print("✓ Operation completed successfully!")
         
+        elif args.command == "state2":
+            # Get authentication tokens for each node
+            token_peer = get_token(username=args.username, password=args.password, port=args.port_peer)
+            token_hsa = get_token(username=args.username, password=args.password, port=args.port_hsa)
+            
+            # Construct Node objects
+            peer_node = Node(port=args.port_peer, token=token_peer, ip=args.ip_peer)
+            hsa_node = Node(port=args.port_hsa, token=token_hsa, ip=args.ip_hsa)
+            
+            # Determine the current state first
+            current_state = get_state2(peer=peer_node, hsa=hsa_node)
+
+            # Print the state table with state information
+            print(state2_table(peer=peer_node, hsa=hsa_node, state=current_state))
+            print()
+            
+            # Print state to console (stdout)
+            print(f"State: {current_state}")
+
+
         elif args.command == "state_info":
             # Get authentication tokens for each node
             token_peer = get_token(username=args.username, password=args.password, port=args.port_peer)
@@ -632,10 +725,10 @@ def main():
             spare_node = Node(port=args.port_spare, token=token_spare, ip=args.ip_spare)
             
             # Determine the current state first
-            current_state = state_info(peer=peer_node, hsa=hsa_node, spare=spare_node)
+            current_state = get_state3(peer=peer_node, hsa=hsa_node, spare=spare_node)
             
             # Print the state table with state information
-            print(str_state(peer=peer_node, hsa=hsa_node, spare=spare_node, state=current_state))
+            print(state3_table(peer=peer_node, hsa=hsa_node, spare=spare_node, state=current_state))
             print()
             
             # Print state to console (stdout)

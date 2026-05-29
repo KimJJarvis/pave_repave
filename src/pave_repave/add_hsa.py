@@ -19,54 +19,88 @@ from pave_repave.get_token import get_token
 logger = logging.getLogger(__name__)
 
 
-def add_hsa(peer: Node, spare: Node, new_cluster: bool = False) -> None:
+def add_new_hsa(peer: Node, spare: Node) -> None:
     """
-    Add an HSA to the cluster by getting integration token from peer and calling become-hsa on spare.
+    Create a new HSA cluster by getting integration token from peer and calling become-hsa on spare.
+    Validates that both peer and spare are not in any cluster.
 
     Args:
-        peer: Node object for the existing HSA peer
-        spare: Node object for the spare node to become HSA
-        new_cluster: If True, validates that both peer and spare are not in any cluster.
-                     If False, validates that peer is in cluster and spare is not.
+        peer: Node object for the peer node (will become primary in new cluster)
+        spare: Node object for the spare node to become HSA (will become secondary)
 
     Raises:
         RuntimeError: If any API call fails or validation checks fail
     """
-    logger.info(f"add_hsa called with peer: {peer}, spare: {spare}, new_cluster: {new_cluster}")
+    logger.info(f"add_new_hsa called with peer: {peer}, spare: {spare}")
     
-    # Validate peer node
+    # Validate peer node - should not be in any cluster
     logger.debug("Validating peer node...")
     peer_status = peer_info(node=peer)
     
-    if new_cluster:
-        # For new cluster: peer should not be in any cluster
-        if peer_status is not None:
-            raise RuntimeError(
-                f"Peer node {peer.ip} is already in a cluster (primary_ip={peer_status.primary_ip}, secondary_ip={peer_status.secondary_ip}). Cannot create new cluster."
-            )
-        logger.debug("✓ Peer node validation passed (not found in any cluster)")
-    else:
-        # For existing cluster: peer should be in cluster with no secondary
-        if peer_status is None:
-            raise RuntimeError(f"Peer node {peer.ip} is not found in cluster")
-        
-        logger.debug(f"Peer status: primary_ip={peer_status.primary_ip}, secondary_ip={peer_status.secondary_ip}")
-        
-        # Check that primary_ip of peer matches peer.ip
-        if peer_status.primary_ip != peer.ip:
-            raise RuntimeError(
-                f"Peer node primary_ip ({peer_status.primary_ip}) does not match peer.ip ({peer.ip})"
-            )
-        
-        # Check that secondary_ip of peer is empty
-        if peer_status.secondary_ip != "":
-            raise RuntimeError(
-                f"Peer node already has a secondary_ip ({peer_status.secondary_ip}). Cannot add HSA."
-            )
-        
-        logger.debug("✓ Peer node validation passed")
+    if peer_status is not None:
+        raise RuntimeError(
+            f"Peer node {peer.ip} is already in a cluster (primary_ip={peer_status.primary_ip}, secondary_ip={peer_status.secondary_ip}). Cannot create new cluster."
+        )
+    logger.debug("✓ Peer node validation passed (not found in any cluster)")
     
-    # Validate spare node (common to both paths)
+    # Validate spare node
+    logger.debug("Validating spare node...")
+    spare_status = peer_info(node=spare)
+    if spare_status is not None:
+        raise RuntimeError(
+            f"Spare node {spare.ip} is already in a cluster (primary_ip={spare_status.primary_ip}, secondary_ip={spare_status.secondary_ip})"
+        )
+    
+    logger.debug("✓ Spare node validation passed (not found in cluster)")
+    
+    logger.debug("Getting integration token")
+    integration_token = get_integration_token(node=peer)
+    logger.debug(f"✓ Integration token obtained (length: {len(integration_token)})")
+    
+    logger.info("Calling become_hsa on spare...")
+    become_hsa(node=spare, ip_peer=peer.ip, integration_token=integration_token)
+    
+    logger.debug("✓ add_new_hsa completed successfully")
+
+
+def add_hsa(peer: Node, spare: Node) -> None:
+    """
+    Add an HSA to an existing cluster by getting integration token from peer and calling become-hsa on spare.
+    Validates that peer is in cluster with no secondary, and spare is not in any cluster.
+
+    Args:
+        peer: Node object for the existing HSA peer (must be in cluster)
+        spare: Node object for the spare node to become HSA
+
+    Raises:
+        RuntimeError: If any API call fails or validation checks fail
+    """
+    logger.info(f"add_hsa called with peer: {peer}, spare: {spare}")
+    
+    # Validate peer node - should be in cluster with no secondary
+    logger.debug("Validating peer node...")
+    peer_status = peer_info(node=peer)
+    
+    if peer_status is None:
+        raise RuntimeError(f"Peer node {peer.ip} is not found in cluster")
+    
+    logger.debug(f"Peer status: primary_ip={peer_status.primary_ip}, secondary_ip={peer_status.secondary_ip}")
+    
+    # Check that primary_ip of peer matches peer.ip
+    if peer_status.primary_ip != peer.ip:
+        raise RuntimeError(
+            f"Peer node primary_ip ({peer_status.primary_ip}) does not match peer.ip ({peer.ip})"
+        )
+    
+    # Check that secondary_ip of peer is empty
+    if peer_status.secondary_ip != "":
+        raise RuntimeError(
+            f"Peer node already has a secondary_ip ({peer_status.secondary_ip}). Cannot add HSA."
+        )
+    
+    logger.debug("✓ Peer node validation passed")
+    
+    # Validate spare node
     logger.debug("Validating spare node...")
     spare_status = peer_info(node=spare)
     if spare_status is not None:
@@ -144,8 +178,11 @@ def main():
         peer_node = Node(port=args.port_peer, token=peer_token, ip=args.ip_peer)
         spare_node = Node(port=args.port_spare, token=spare_token, ip=args.ip_spare)
 
-        # Call add_hsa
-        add_hsa(peer=peer_node, spare=spare_node, new_cluster=args.new_cluster)
+        # Call appropriate function based on new_cluster parameter
+        if args.new_cluster:
+            add_new_hsa(peer=peer_node, spare=spare_node)
+        else:
+            add_hsa(peer=peer_node, spare=spare_node)
 
         print("✓ Operation completed successfully!")
     except RuntimeError as e:

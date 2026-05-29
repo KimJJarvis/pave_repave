@@ -21,10 +21,10 @@ from pave_repave.utilities import (
     setup_logging,
 )
 from pave_repave.state_info import (
-    state_info,
-    verify_state,
-    wait_state,
-    wait_valid_state,
+    get_state3,
+    verify_state3,
+    wait_state3,
+    wait_valid_state3,
 )
 from pave_repave.fail_over import fail_over
 from pave_repave.switch_primary_secondary import switch_primary_secondary
@@ -33,12 +33,12 @@ from pave_repave.peer_info import peer_info
 from pave_repave.leave_cluster_hsa import leave_cluster_hsa
 from pave_repave.become_hsa import become_hsa
 from pave_repave.get_token import get_token
-from pave_repave.state_info import str_state
+from pave_repave.state_info import state3_table
 
 logger = logging.getLogger(__name__)
 
 
-def precondition(state: int, peer: Node, hsa: Node, spare: Node) -> None:
+def precondition3(state: int, peer: Node, hsa: Node, spare: Node) -> None:
     """
     Verify that the system is in the expected state.
 
@@ -52,13 +52,13 @@ def precondition(state: int, peer: Node, hsa: Node, spare: Node) -> None:
         ValueError: If system is not in the expected state
     """
     target_state = state
-    if not verify_state(state=target_state, peer=peer, hsa=hsa, spare=spare):
+    if not verify_state3(state=target_state, peer=peer, hsa=hsa, spare=spare):
         raise ValueError(f"System is not in state {target_state}.")
     logger.info(f"✓ System verified to be in state {target_state}.")
     print(f"✓ System verified to be in state {target_state}.")
 
 
-def postcondition(state: int, peer: Node, hsa: Node, spare: Node) -> None:
+def postcondition3(state: int, peer: Node, hsa: Node, spare: Node) -> None:
     """
     Wait for the system to reach the expected state and verify.
 
@@ -70,14 +70,14 @@ def postcondition(state: int, peer: Node, hsa: Node, spare: Node) -> None:
     """
     target_state = state
     logger.info(f"Waiting for system to reach state {target_state}.")
-    wait_state(state=target_state, peer=peer, hsa=hsa, spare=spare)
+    wait_state3(state=target_state, peer=peer, hsa=hsa, spare=spare)
     logger.info(f"✓ System verified to be in state {target_state}.")
     print(f"✓ System verified to be in state {target_state}.")
-    print(str_state(peer=peer, hsa=hsa, spare=spare, state=target_state))
+    print(state3_table(peer=peer, hsa=hsa, spare=spare, state=target_state))
 
 
 def pave_fail_over(peer: Node, hsa: Node, spare: Node) -> None:
-    precondition(state=1, peer=peer, hsa=hsa, spare=spare)
+    precondition3(state=1, peer=peer, hsa=hsa, spare=spare)
 
     logger.info("Calling fail_over on peer...")
     print("Calling fail_over on peer...")
@@ -85,11 +85,11 @@ def pave_fail_over(peer: Node, hsa: Node, spare: Node) -> None:
     logger.info("✓ fail_over initiated successfully")
     print("✓ fail_over initiated successfully")
 
-    postcondition(state=2, peer=peer, hsa=hsa, spare=spare)
+    postcondition3(state=2, peer=peer, hsa=hsa, spare=spare)
     
 
 def pave_switch_primary_secondary(peer: Node, hsa: Node, spare: Node) -> None:
-    precondition(state=2, peer=peer, hsa=hsa, spare=spare)
+    precondition3(state=2, peer=peer, hsa=hsa, spare=spare)
 
     logger.info("Getting peer info to obtain peer ID...")
     peer_status = peer_info(node=peer)
@@ -104,10 +104,10 @@ def pave_switch_primary_secondary(peer: Node, hsa: Node, spare: Node) -> None:
     logger.info("✓ switch_primary_secondary initiated successfully")
     print("✓ switch_primary_secondary initiated successfully")
 
-    postcondition(state=3, peer=peer, hsa=hsa, spare=spare)
+    postcondition3(state=3, peer=peer, hsa=hsa, spare=spare)
 
 def pave_leave_cluster_hsa(peer: Node, hsa: Node, spare: Node) -> None:
-    precondition(state=3, peer=peer, hsa=hsa, spare=spare)
+    precondition3(state=3, peer=peer, hsa=hsa, spare=spare)
 
     logger.info("Get integration token")
     integration_token = get_integration_token(node=hsa)
@@ -119,11 +119,11 @@ def pave_leave_cluster_hsa(peer: Node, hsa: Node, spare: Node) -> None:
     logger.info("✓ leave_cluster_hsa initiated successfully")
     print("✓ leave_cluster_hsa initiated successfully")
 
-    postcondition(state=4, peer=peer, hsa=hsa, spare=spare)
+    postcondition3(state=4, peer=peer, hsa=hsa, spare=spare)
 
 
 def repave_become_hsa(peer: Node, hsa: Node, spare: Node) -> None:
-    precondition(state=4, peer=peer, hsa=hsa, spare=spare)
+    precondition3(state=4, peer=peer, hsa=hsa, spare=spare)
 
     logger.info("Getting integration token")
     integration_token = get_integration_token(node=hsa)
@@ -135,11 +135,11 @@ def repave_become_hsa(peer: Node, hsa: Node, spare: Node) -> None:
     logger.info("✓ become_hsa initiated successfully")
     print("✓ become_hsa initiated successfully")
 
-    postcondition(state=5, peer=peer, hsa=hsa, spare=spare)
+    postcondition3(state=5, peer=peer, hsa=hsa, spare=spare)
 
 
 def repave_fail_over(peer: Node, hsa: Node, spare: Node) -> None:
-    precondition(state=5, peer=peer, hsa=hsa, spare=spare)
+    precondition3(state=5, peer=peer, hsa=hsa, spare=spare)
 
     spare.token = hsa.token
 
@@ -149,10 +149,10 @@ def repave_fail_over(peer: Node, hsa: Node, spare: Node) -> None:
     logger.info("✓ fail_over initiated successfully")
     print("✓ fail_over initiated successfully")
 
-    postcondition(state=6, peer=peer, hsa=hsa, spare=spare)
+    postcondition3(state=6, peer=peer, hsa=hsa, spare=spare)
 
 def repave_switch_primary_secondary(peer: Node, hsa: Node, spare: Node) -> None:
-    precondition(state=6, peer=peer, hsa=hsa, spare=spare)
+    precondition3(state=6, peer=peer, hsa=hsa, spare=spare)
 
     spare.token = hsa.token
 
@@ -169,7 +169,7 @@ def repave_switch_primary_secondary(peer: Node, hsa: Node, spare: Node) -> None:
     logger.info("✓ switch_primary_secondary initiated successfully")
     print("✓ switch_primary_secondary initiated successfully")
 
-    postcondition(state=7, peer=peer, hsa=hsa, spare=spare)
+    postcondition3(state=7, peer=peer, hsa=hsa, spare=spare)
 
 
 def repave(peer: Node, hsa: Node, spare: Node) -> None:
@@ -189,8 +189,8 @@ def repave(peer: Node, hsa: Node, spare: Node) -> None:
     validate_unique_ips(peer.ip, hsa.ip, spare.ip)
 
     # Wait for a valid (non-zero) state
-    s = wait_valid_state(peer=peer, hsa=hsa, spare=spare)
-    print(str_state(peer=peer, hsa=hsa, spare=spare, state=s))
+    s = wait_valid_state3(peer=peer, hsa=hsa, spare=spare)
+    print(state3_table(peer=peer, hsa=hsa, spare=spare, state=s))
 
     funcs = [
         pave_fail_over,
@@ -220,8 +220,8 @@ def paverepave(peer: Node, hsa: Node, spare: Node) -> None:
     validate_unique_ips(peer.ip, hsa.ip, spare.ip)
 
     # Wait for a valid (non-zero) state
-    s = wait_valid_state(peer=peer, hsa=hsa, spare=spare)
-    print(str_state(peer=peer, hsa=hsa, spare=spare, state=s))
+    s = wait_valid_state3(peer=peer, hsa=hsa, spare=spare)
+    print(state3_table(peer=peer, hsa=hsa, spare=spare, state=s))
 
     funcs = [
         pave_fail_over,
