@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+"""
+Script to remove a peer from a cluster using NMS API.
+Similar to leave_cluster but automatically retrieves the integration token.
+"""
+
+import json
+import logging
+
+from pave_repave.node import Node
+from pave_repave.get_integration_token import get_integration_token
+from pave_repave.leave_cluster import leave_cluster
+
+logger = logging.getLogger(__name__)
+
+
+def remove_peer(node_cluster: Node, node_peer: Node) -> None:
+    """
+    Remove a peer node from the cluster by automatically retrieving the integration token
+    and calling leave_cluster.
+
+    Args:
+        node_cluster: Node object for the cluster node (the one initiating the removal)
+        node_peer: Node object for the peer node to be removed
+
+    Raises:
+        RuntimeError: If the API returns HTTP 400, other error status, or unexpected response
+    """
+    # Log parameters
+    logger.debug(
+        f"remove_peer called on cluster node {node_cluster}, peer node: {node_peer}"
+    )
+    
+    # Get integration token from cluster node
+    logger.info("Retrieving integration token from cluster node...")
+    integration_token = get_integration_token(node=node_cluster)
+    
+    # Call leave_cluster with the retrieved integration token
+    logger.info("Calling leave_cluster to remove peer...")
+    leave_cluster(
+        node_cluster=node_cluster,
+        node_peer=node_peer,
+        integration_token=integration_token,
+    )
+    
+    logger.info(f"✓ remove_peer completed successfully")
+
+# Made with Bob

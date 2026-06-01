@@ -66,7 +66,6 @@ def add_new_hsa(peer: Node, spare: Node) -> None:
 def add_hsa(peer: Node, spare: Node) -> None:
     """
     Add an HSA to an existing cluster by getting integration token from peer and calling become-hsa on spare.
-    Validates that peer is in cluster with no secondary, and spare is not in any cluster.
 
     Args:
         peer: Node object for the existing HSA peer (must be in cluster)
@@ -76,39 +75,6 @@ def add_hsa(peer: Node, spare: Node) -> None:
         RuntimeError: If any API call fails or validation checks fail
     """
     logger.info(f"add_hsa called with peer: {peer}, spare: {spare}")
-    
-    # Validate peer node - should be in cluster with no secondary
-    logger.debug("Validating peer node...")
-    peer_status = peer_info(node=peer)
-    
-    if peer_status is None:
-        raise RuntimeError(f"Peer node {peer.ip} is not found in cluster")
-    
-    logger.debug(f"Peer status: primary_ip={peer_status.primary_ip}, secondary_ip={peer_status.secondary_ip}")
-    
-    # Check that primary_ip of peer matches peer.ip
-    if peer_status.primary_ip != peer.ip:
-        raise RuntimeError(
-            f"Peer node primary_ip ({peer_status.primary_ip}) does not match peer.ip ({peer.ip})"
-        )
-    
-    # Check that secondary_ip of peer is empty
-    if peer_status.secondary_ip != "":
-        raise RuntimeError(
-            f"Peer node already has a secondary_ip ({peer_status.secondary_ip}). Cannot add HSA."
-        )
-    
-    logger.debug("✓ Peer node validation passed")
-    
-    # Validate spare node
-    logger.debug("Validating spare node...")
-    spare_status = peer_info(node=spare)
-    if spare_status is not None:
-        raise RuntimeError(
-            f"Spare node {spare.ip} is already in a cluster (primary_ip={spare_status.primary_ip}, secondary_ip={spare_status.secondary_ip})"
-        )
-    
-    logger.debug("✓ Spare node validation passed (not found in cluster)")
     
     logger.debug("Getting integration token")
     integration_token = get_integration_token(node=peer)

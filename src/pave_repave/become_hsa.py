@@ -18,7 +18,7 @@ from pave_repave.config import config
 logger = logging.getLogger(__name__)
 
 
-def become_hsa(node: Node, ip_peer: str, integration_token: str) -> dict:
+def become_hsa(node: Node, ip_peer: str, integration_token: str) -> None:
     """
     Call the become-hsa endpoint.
 

@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 def setup_logging(level: str, log_file: str | None = None) -> None:
     """
     Configure logging for the application.
+    Logs to both console and file (if file is specified) using multiple handlers.
 
     Args:
         level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
@@ -20,10 +21,12 @@ def setup_logging(level: str, log_file: str | None = None) -> None:
     """
     numeric_level = getattr(logging, level.upper(), logging.INFO)
 
-    # Route to console, file, or both
-    handlers = [logging.StreamHandler(sys.stderr)]
+    # Setup handlers: always log to console, optionally log to file
+    handlers: list[logging.Handler] = [
+        logging.StreamHandler(),  # console
+    ]
     if log_file:
-        handlers.append(logging.FileHandler(log_file))
+        handlers.append(logging.FileHandler(log_file))  # file
 
     logging.basicConfig(
         level=numeric_level,

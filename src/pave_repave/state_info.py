@@ -26,17 +26,88 @@ from pave_repave.peer_info import peer_info
 logger = logging.getLogger(__name__)
 
 
+def state1_tuple(state: int) -> str:
+    if state == 1:
+        return "active primary"
+    elif state == 2:
+        return "active secondary"
+    elif state == 3:
+        return "passive primary"
+    elif state == 4:
+        return "passive secondary"
+    elif state == 5:
+        return "spare"
+    else:
+        return "unknown"
+
+def state1_table(peer: Node, state: int) -> str:
+    """
+    Print the status of a single node in a two-column table format.
+    
+    Args:
+        peer: Peer node
+    
+    Returns:
+        Formatted string with status information in table format
+    """
+    
+    # Get status for the node
+    peer_status = peer_info(peer)
+    
+    # Define column headers
+    fields = ["active_appliance", "primary_ip", "secondary_ip", "id"]
+    
+    # Define column widths
+    col1_width = 20
+    col2_width = 20
+    
+    # Build the table
+    lines = []
+    
+    # Header row
+    header = f"{'Field':<{col1_width}} {'Peer':<{col2_width}}"
+    lines.append(header)
+    lines.append("-" * (col1_width + col2_width + 1))
+    
+    # Add ip row (first row)
+    ip_row = f"{'ip':<{col1_width}} {str(peer.ip):<{col2_width}}"
+    lines.append(ip_row)
+    
+    # Add port row (second row)
+    port_row = f"{'port':<{col1_width}} {str(peer.port):<{col2_width}}"
+    lines.append(port_row)
+    
+    # Data rows
+    for field in fields:
+        peer_value = getattr(peer_status, field, "N/A") if peer_status else "N/A"
+        
+        # Convert active_appliance integer values to readable strings
+        if field == "active_appliance":
+            peer_value = "Primary" if peer_value == 1 else ("Secondary" if peer_value == 2 else "N/A")
+        
+        row = f"{field:<{col1_width}} {str(peer_value):<{col2_width}}"
+        lines.append(row)
+
+    
+    # Add status row with state information
+    status_value = state1_tuple(state)
+    status_row = f"{'status':<{col1_width}} {status_value:<{col2_width}}"
+    lines.append(status_row)
+    
+    return "\n".join(lines)
+
 def state2_tuple(state: int) -> tuple[str, str]:
     if state == 1:
-        return ("spare","spare")
-    elif state == 2:
         return ("active primary","spare")
-    elif state == 3:
+    elif state == 2:
         return ("active primary","passive secondary")
-    elif state == 4:
+    elif state == 3:
         return ("passive primary", "active secondary")
+    elif state == 4:
+        return ("passive secondary","active primary")
     else: 
         return ("unkown", "unknown")
+        
 
 def state2_table(peer: Node, hsa: Node, state: int) -> str:
     """
@@ -104,24 +175,68 @@ def state2_table(peer: Node, hsa: Node, state: int) -> str:
 
 def state3_tuple(state: int) -> tuple[str, str, str]:
     if state == 1:
+        return ("active primary","spare","spare")
+    if state == 2:
         return ("active primary","passive secondary","spare")
-    elif state == 2:
-        return ("passive primary","active secondary","spare")       
     elif state == 3:
-        return ("passive secondary", "active primary", "spare")
+        return ("passive primary","active secondary","spare")       
     elif state == 4:
-        return ("retired", "active primary", "spare")
+        return ("passive secondary", "active primary", "spare")
     elif state == 5:
-        return ("retired", "active primary", "passive secondary")
+        return ("retired", "active primary", "spare")
     elif state == 6:
-        return ("retired", "passive primary", "active secondary")
+        return ("retired", "active primary", "passive secondary")
     elif state == 7:
+        return ("retired", "passive primary", "active secondary")
+    elif state == 8:
         return ("retired", "passive secondary", "active primary")
     else: 
         return ("unkown", "unknown", "unknown")
 
 
+def get_state1(peer: Node)-> int:
+    logger.debug(f"get_state1 {peer}") 
+    peer_status_on_peer = peer_info(node=peer)
+    if peer_status_on_peer is None:
+        logger.debug(f"Peer is not running")
+        loopback_status_on_peer=peer_info(Node(port=peer.port, token=peer.token, ip="127.0.0.1"))
+        if (loopback_status_on_peer is not None):
+            logger.debug(f"Peer is spare") 
+            return 5
+    elif(
+        peer_status_on_peer is not None
+        and peer_status_on_peer.primary_ip == peer.ip
+        and peer_status_on_peer.active_appliance == 1
+    ):
+        logger.debug(f"Peer is active primary") 
+        return 1
+    elif(
+        peer_status_on_peer is not None
+        and peer_status_on_peer.secondary_ip == peer.ip
+        and peer_status_on_peer.active_appliance == 2
+    ):
+        logger.debug(f"Peer is active secondary") 
+        return 2
+    elif(
+        peer_status_on_peer is not None
+        and peer_status_on_peer.primary_ip == peer.ip
+        and peer_status_on_peer.active_appliance == 2
+    ):
+        logger.debug(f"Peer is passive primary") 
+        return 3
+    elif(
+        peer_status_on_peer is not None
+        and peer_status_on_peer.secondary_ip == peer.ip
+        and peer_status_on_peer.active_appliance == 1
+    ):
+        logger.debug(f"Peer is passive secondary") 
+        return 4
+    else:
+        logger.debug(f"Invalid state") 
+    return 0
+
 def get_state2(peer: Node, hsa: Node) -> int:
+    logger.debug(f"get_state2 {peer} {hsa}") 
     """
     Determine the current state of the peer/HSA cluster.
     """
@@ -129,18 +244,6 @@ def get_state2(peer: Node, hsa: Node) -> int:
 
     if peer_status_on_peer is None:
         logger.debug(f"Peer is not running")
-        loopback_status_on_peer=peer_info(Node(port=peer.port, token=peer.token, ip="127.0.0.1"))
-        if (loopback_status_on_peer is not None):
-            logger.debug(f"Peer is not spare") 
-        else:
-            hsa_status_on_hsa = peer_info(node=hsa)
-            if hsa_status_on_hsa is None:
-                logger.debug(f"HSA is not running")
-                loopback_status_on_hsa=peer_info(Node(port=hsa.port, token=hsa.token, ip="127.0.0.1"))
-                if (loopback_status_on_hsa is not None):
-                    logger.debug(f"HSA is not spare") 
-                else:
-                    return 1
     elif(
         peer_status_on_peer is not None
         and peer_status_on_peer.primary_ip == peer.ip
@@ -153,7 +256,7 @@ def get_state2(peer: Node, hsa: Node) -> int:
             loopback_status_on_hsa=peer_info(Node(port=hsa.port, token=hsa.token, ip="127.0.0.1"))
             if (loopback_status_on_hsa is not None):
                 logger.debug(f"HSA is spare") 
-                return 2
+                return 1
             else:
                 logger.debug(f"HSA not spare")
     elif(
@@ -171,7 +274,7 @@ def get_state2(peer: Node, hsa: Node) -> int:
             and hsa_status_on_hsa.active_appliance == 1
         ):
             logger.debug(f"HSA status match")
-            return 3 
+            return 2 
         else:
             logger.debug(f"HSA status mismatch")
     elif(
@@ -189,12 +292,112 @@ def get_state2(peer: Node, hsa: Node) -> int:
             and hsa_status_on_hsa.active_appliance == 2
         ):
             logger.debug(f"HSA status match")
+            return 3 
+        else:
+            logger.debug(f"HSA status mismatch")
+    elif(
+        peer_status_on_peer is not None
+        and peer_status_on_peer.primary_ip == hsa.ip
+        and peer_status_on_peer.secondary_ip == peer.ip
+        and peer_status_on_peer.active_appliance == 1
+    ):
+        logger.debug(f"Peer is passive secondary") 
+        hsa_status_on_hsa = peer_info(node=hsa)
+        if (
+            hsa_status_on_hsa is not None
+            and hsa_status_on_hsa.primary_ip == hsa.ip
+            and hsa_status_on_hsa.secondary_ip == peer.ip
+            and hsa_status_on_hsa.active_appliance == 1
+        ):
+            logger.debug(f"HSA status match")
             return 4 
         else:
             logger.debug(f"HSA status mismatch")
     else:
         logger.debug(f"Invalid state") 
     return 0
+
+
+def verify_state1(state: int, peer: Node) -> bool:
+    """
+    Verify that the system is in the specified state.
+
+    Returns:
+        True if system is in the specified state, False otherwise
+    """
+    current_state = get_state1(peer=peer)
+    return current_state == state
+
+
+def wait_state1(state: int, peer: Node) -> None:
+    """
+    Wait for the system to reach the specified state.
+    Calls verify_state1() repeatedly until the desired state is reached.
+    """
+    max_retries = config.wait_state_max_retries
+    retry_count = 0
+
+    logger.debug(f"Waiting for state {state}...")
+
+    time.sleep(config.wait_state_initial_delay)
+    while retry_count < max_retries:
+        if retry_count > 0:
+            logger.debug(f"Retry attempt {retry_count}/{max_retries}...")
+
+        # Check if we're in the desired state
+        if verify_state1(state=state, peer=peer):
+            logger.debug(f"✓ State {state} reached successfully")
+            return
+
+        # If not in desired state, wait and retry
+        retry_count += 1
+        if retry_count < max_retries:
+            current_state = get_state1(peer=peer)
+            logger.debug(
+                f"Current state is {current_state}, not {state}. Waiting {config.wait_state_retry_delay} seconds before retry..."
+            )
+            logger.info(f"Wait {config.wait_state_retry_delay} seconds. Retry attempt {retry_count}/{max_retries}...")
+            time.sleep(config.wait_state_retry_delay)
+        else:
+            current_state = get_state1(peer=peer)
+            raise RuntimeError(
+                f"wait_state failed: State {state} not reached after maximum retries (current state: {current_state})"
+            )
+    time.sleep(config.wait_state_settle_delay)
+
+
+def precondition1(state: int, peer: Node) -> None:
+    """
+    Verify that the system is in the expected state.
+
+    Args:
+        state: Expected state number
+        peer: Peer node
+
+    Raises:
+        ValueError: If system is not in the expected state
+    """
+    target_state = state
+    if not verify_state1(state=target_state, peer=peer):
+        raise ValueError(f"System is not in state {target_state}.")
+    logger.debug(f"✓ System verified to be in state {target_state}.")
+    print(f"✓ System verified to be in state {target_state}.")
+
+
+def postcondition1(state: int, peer: Node) -> None:
+    """
+    Wait for the system to reach the expected state and verify.
+
+    Args:
+        state: Expected state number
+        peer: Peer node
+    """
+    target_state = state
+    logger.debug(f"Waiting for system to reach state {target_state}.")
+    wait_state1(state=target_state, peer=peer)
+    logger.debug(f"✓ System verified to be in state {target_state}.")
+    print(f"✓ System verified to be in state {target_state}.")
+    print(state1_table(peer=peer, state=target_state))
 
 
 def verify_state2(state: int, peer: Node, hsa: Node) -> bool:
@@ -232,10 +435,10 @@ def wait_state2(state: int, peer: Node, hsa: Node) -> None:
         retry_count += 1
         if retry_count < max_retries:
             current_state = get_state2(peer=peer, hsa=hsa)
-            logger.warning(
+            logger.debug(
                 f"Current state is {current_state}, not {state}. Waiting {config.wait_state_retry_delay} seconds before retry..."
             )
-            print(f"Current state is {current_state}, not {state}. Waiting {config.wait_state_retry_delay} seconds before retry...")
+            logger.info(f"Wait {config.wait_state_retry_delay} seconds. Retry attempt {retry_count}/{max_retries}...")
             time.sleep(config.wait_state_retry_delay)
         else:
             current_state = get_state2(peer=peer, hsa=hsa)
@@ -280,7 +483,7 @@ def wait_valid_state2(peer: Node, hsa: Node) -> int:
         # If still in state 0, wait and retry
         retry_count += 1
         if retry_count < max_retries:
-            logger.warning(
+            logger.debug(
                 f"Current state is 0 (invalid). Waiting {config.wait_state_retry_delay} seconds before retry..."
             )
             print(f"Current state is 0 (invalid). Waiting {config.wait_state_retry_delay} seconds before retry...")
@@ -309,7 +512,7 @@ def precondition2(state: int, peer: Node, hsa: Node) -> None:
     target_state = state
     if not verify_state2(state=target_state, peer=peer, hsa=hsa):
         raise ValueError(f"System is not in state {target_state}.")
-    logger.info(f"✓ System verified to be in state {target_state}.")
+    logger.debug(f"✓ System verified to be in state {target_state}.")
     print(f"✓ System verified to be in state {target_state}.")
 
 
@@ -323,9 +526,9 @@ def postcondition2(state: int, peer: Node, hsa: Node) -> None:
         hsa: HSA node
     """
     target_state = state
-    logger.info(f"Waiting for system to reach state {target_state}.")
+    logger.debug(f"Waiting for system to reach state {target_state}.")
     wait_state2(state=target_state, peer=peer, hsa=hsa)
-    logger.info(f"✓ System verified to be in state {target_state}.")
+    logger.debug(f"✓ System verified to be in state {target_state}.")
     print(f"✓ System verified to be in state {target_state}.")
     print(state2_table(peer=peer, hsa=hsa, state=target_state))
 
@@ -400,6 +603,7 @@ def state3_table(peer: Node, hsa: Node, spare: Node, state: int) -> str:
 
 
 def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
+    logger.debug(f"get_state2 {peer} {hsa} {spare}") 
     """
     Determine the current state of the peer/HSA cluster.
     """
@@ -413,7 +617,16 @@ def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
         and peer_status_on_peer.active_appliance == 1
     ):
         logger.debug(f"Peer is active primary") 
-        if (
+        if hsa_status_on_hsa is None:
+            logger.debug(f"HSA is spare") 
+            loopback_status_on_hsa=peer_info(Node(port=hsa.port, token=hsa.token, ip="127.0.0.1"))
+            if (loopback_status_on_hsa is not None):
+                logger.debug(f"HSA is spare") 
+                loopback_status_on_spare=peer_info(Node(port=spare.port, token=spare.token, ip="127.0.0.1"))
+                if (loopback_status_on_spare is not None):
+                    logger.debug(f"Spare is spare") 
+                    return 1
+        elif (
             hsa_status_on_hsa is not None
             and hsa_status_on_hsa.primary_ip == peer.ip
             and hsa_status_on_hsa.secondary_ip == hsa.ip
@@ -423,7 +636,7 @@ def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
             loopback_status_on_spare=peer_info(Node(port=spare.port, token=spare.token, ip="127.0.0.1"))
             if (loopback_status_on_spare is not None):
                 logger.debug(f"Spare is spare") 
-                return 1
+                return 2
             logger.debug(f"Spare is not spare")             
         else:
             logger.debug(f"HSA status does not match")
@@ -445,7 +658,7 @@ def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
             loopback_status_on_spare=peer_info(Node(port=spare.port, token=spare.token, ip="127.0.0.1"))
             if (loopback_status_on_spare is not None):
                 logger.debug(f"Spare is spare") 
-                return 2
+                return 3
             logger.debug(f"Spare is not spare")             
         else:
             logger.debug(f"HSA status does not match")
@@ -467,7 +680,7 @@ def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
             loopback_status_on_spare=peer_info(Node(port=spare.port, token=spare.token, ip="127.0.0.1"))
             if (loopback_status_on_spare is not None):
                 logger.debug(f"Spare is spare") 
-                return 3
+                return 4
             logger.debug(f"Spare is not spare")             
         else:
             logger.debug(f"HSA status does not match")
@@ -495,7 +708,7 @@ def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
                 loopback_status_on_spare=peer_info(Node(port=spare.port, token=spare.token, ip="127.0.0.1"))
                 if (loopback_status_on_spare is not None):
                     logger.debug(f"Spare is spare") 
-                    return 4
+                    return 5
             elif (
                 hsa_status_on_hsa is not None
                 and hsa_status_on_hsa.primary_ip == hsa.ip
@@ -511,7 +724,7 @@ def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
                     and spare_status_on_spare.active_appliance == 1
                 ):
                     logger.debug(f"Spare is passive secondary")
-                    return 5
+                    return 6
                 logger.debug(f"Spare status does not match")
                 return 0
             elif (
@@ -529,7 +742,7 @@ def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
                     and spare_status_on_spare.active_appliance == 2
                 ):
                     logger.debug(f"Spare is active secondary")
-                    return 6
+                    return 7
                 logger.debug(f"Spare status does not match")
                 return 0
             elif (
@@ -547,7 +760,7 @@ def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
                     and loopback_status_on_spare.active_appliance == 1
                 ):
                     logger.debug(f"Spare is active primary")
-                    return 7
+                    return 8
                 logger.debug(f"Spare status does not match")
                 return 0
             elif (
@@ -600,10 +813,10 @@ def wait_state3(state: int, peer: Node, hsa: Node, spare: Node) -> None:
         retry_count += 1
         if retry_count < max_retries:
             current_state = get_state3(peer=peer, hsa=hsa, spare=spare)
-            logger.warning(
+            logger.debug(
                 f"Current state is {current_state}, not {state}. Waiting {config.wait_state_retry_delay} seconds before retry..."
             )
-            print(f"Current state is {current_state}, not {state}. Waiting {config.wait_state_retry_delay} seconds before retry...")
+            logger.info(f"Wait {config.wait_state_retry_delay} seconds. Retry attempt {retry_count}/{max_retries}...")
             time.sleep(config.wait_state_retry_delay)
         else:
             current_state = get_state3(peer=peer, hsa=hsa, spare=spare)
@@ -661,6 +874,42 @@ def wait_valid_state3(peer: Node, hsa: Node, spare: Node) -> int:
     raise RuntimeError(
         f"wait_valid_state failed: Valid state not reached after maximum retries (current state: 0)"
     )
+
+
+def precondition3(state: int, peer: Node, hsa: Node, spare: Node) -> None:
+    """
+    Verify that the system is in the expected state.
+
+    Args:
+        state: Expected state number
+        peer: Peer node
+        hsa: HSA node
+        spare: Spare node
+
+    Raises:
+        ValueError: If system is not in the expected state
+    """
+    target_state = state
+    if not verify_state3(state=target_state, peer=peer, hsa=hsa, spare=spare):
+        raise ValueError(f"System is not in state {target_state}.")
+    logger.debug(f"✓ System verified to be in state {target_state}.")
+
+
+def postcondition3(state: int, peer: Node, hsa: Node, spare: Node) -> None:
+    """
+    Wait for the system to reach the expected state and verify.
+
+    Args:
+        state: Expected state number
+        peer: Peer node
+        hsa: HSA node
+        spare: Spare node
+    """
+    target_state = state
+    logger.debug(f"Waiting for system to reach state {target_state}.")
+    wait_state3(state=target_state, peer=peer, hsa=hsa, spare=spare)
+    logger.debug(f"✓ System verified to be in state {target_state}.")
+    print(state3_table(peer=peer, hsa=hsa, spare=spare, state=target_state))
 
 
 def main():

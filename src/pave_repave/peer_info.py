@@ -17,6 +17,7 @@ from pave_repave.get_token import get_token
 from pave_repave.config import config
 
 logger = logging.getLogger(__name__)
+logger.disabled = True  # Completely silences this logger
 
 
 def peer_info(node: Node) -> Status | None:

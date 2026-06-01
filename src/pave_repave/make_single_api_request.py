@@ -18,6 +18,7 @@ from typing import Dict, Any, Optional
 from pave_repave.config import config
 
 logger = logging.getLogger(__name__)
+logger.disabled = True  # Completely silences this logger
 
 
 def make_single_api_request(

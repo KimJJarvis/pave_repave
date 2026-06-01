@@ -1,7 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class AppConfig(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="PAVE_")
+    model_config = SettingsConfigDict(env_prefix="CLUSTER_CLIENT_")
     host: str = "localhost"
     http_502_max_retries: int = 5
     http_502_retry_delay: int = 30
@@ -15,6 +15,8 @@ class AppConfig(BaseSettings):
     fail_over_max_retries: int = 10
     fail_over_retry_delay: int = 30
     port_forward: bool = False
+    log_level: str = "INFO"
+    log_file: str = "cluster_client.log"
 
 # Load once at startup
 config = AppConfig()

@@ -18,6 +18,7 @@ from pave_repave.utilities import setup_logging
 from pave_repave.config import config
 
 logger = logging.getLogger(__name__)
+logger.disabled = True  # Completely silences this logger
 
 
 def get_token(username: str, password: str, port: int) -> str:
