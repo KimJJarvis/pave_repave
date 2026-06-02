@@ -886,7 +886,7 @@ def main():
             # Create spare Node object
             spare_node = Node(port=args.port_spare, token=spare_token, ip=args.ip_spare)
 
-            join_cluster(node=spare_node, ip_peer=peer_node.ip, integration_token=args.integration_token, name=args.name)
+            join_cluster(cluster=spare_node, ip_spare=peer_node.ip, integration_token=args.integration_token, name=args.name)
 
             print("✓ Operation completed successfully!")
 
@@ -951,15 +951,12 @@ def main():
 
             # Create peer Node object
             peer_node = Node(port=args.port_peer, token=peer_token, ip=args.ip_peer)
-
-            # Get integration token
-            integration_token = get_integration_token(node=cluster_node)
     
             # Call leave_cluster
             leave_cluster(
-                node_cluster=cluster_node,
-                node_peer=peer_node,
-                integration_token=integration_token,
+                cluster=cluster_node,
+                peer=peer_node,
+                integration_token=args.integration_token,
             )
 
             print("✓ Operation completed successfully!")
@@ -981,8 +978,8 @@ def main():
             precondition1(state=1, peer=peer_node)
             precondition1(state=1, peer=cluster_node)
             remove_peer(
-                node_cluster=cluster_node,
-                node_peer=peer_node,
+                cluster=cluster_node,
+                peer=peer_node,
             )
             postcondition1(state=5, peer=peer_node)
 

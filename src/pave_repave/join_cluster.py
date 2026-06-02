@@ -18,7 +18,7 @@ from pave_repave.config import config
 logger = logging.getLogger(__name__)
 
 
-def join_cluster(node: Node, ip_peer: str, integration_token: str, name: str) -> None:
+def join_cluster(cluster: Node, ip_spare: str, integration_token: str, name: str) -> None:
     """
     Call the join-cluster endpoint.
 
@@ -35,20 +35,20 @@ def join_cluster(node: Node, ip_peer: str, integration_token: str, name: str) ->
         RuntimeError: If the API returns HTTP 400, other error status, or unexpected response
     """
     # Log parameters
-    logger.debug(f"join-cluster called on {node}, ip_peer: {ip_peer}, name: {name}")
+    logger.debug(f"join-cluster called on {cluster}, ip_peer: {ip_spare}, name: {name}")
     
-    host = config.host if config.port_forward else node.ip
-    base_url = f"https://{host}:{node.port}"
+    host = config.host if config.port_forward else cluster.ip
+    base_url = f"https://{host}:{cluster.port}"
     url = f"{base_url}/api/v3/cluster-orchestrator/join-cluster"
 
     data = {
-        "clusterNodeIp": ip_peer,
-        "newNodeIp": node.ip,
+        "clusterNodeIp": cluster.ip,
+        "newNodeIp": ip_spare,
         "newNodeName": name,
         "token": integration_token,
     }
     
-    response = make_single_api_request(url=url, bearer_token=node.token, method="POST", data=data)
+    response = make_single_api_request(url=url, bearer_token=cluster.token, method="POST", data=data)
     
     # Log response object
     logger.debug(f"join_cluster response: {json.dumps(response, indent=2)}")
@@ -69,7 +69,7 @@ def join_cluster(node: Node, ip_peer: str, integration_token: str, name: str) ->
     # Check for success message
     status_msg = response.get("status", "")
     logger.debug(f"join_cluster response: {status_msg}")
-    if "HSA add successfully initiated" not in status_msg:
+    if "Peer Add successfully initiated" not in status_msg:
         logger.error(f"Unexpected response status: {status_msg}")
         raise RuntimeError(f"join_cluster did not return expected success message. Got: {status_msg}")
     

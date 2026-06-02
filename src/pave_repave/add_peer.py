@@ -60,8 +60,8 @@ def add_new_peer(cluster: Node, spare: Node, name: str) -> None:
     
     logger.info("Calling join_cluster on spare...")
     join_cluster(
-        node=spare,
-        ip_peer=cluster.ip,
+        cluster=cluster,
+        ip_spare=spare.ip,
         integration_token=integration_token,
         name=name,
     )
@@ -88,8 +88,8 @@ def add_peer(cluster: Node, spare: Node, name: str) -> None:
     
     logger.info("Calling join_cluster on spare...")
     join_cluster(
-        node=spare,
-        ip_peer=cluster.ip,
+        cluster=cluster,
+        ip_spare=spare.ip,
         integration_token=integration_token,
         name=name,
     )

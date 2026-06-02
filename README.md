@@ -1,4 +1,26 @@
-# Pave Repave Procedure
+# Cluster Client
+
+## Repave Procedure
+
+
+The Repave Procedure replaces a peer in a NMS cluster with a spare.
+
+
+
+```
+cluster-client repave \
+  --ip_peer 192.168.122.45\
+  --port_pee \ 
+  --ip_hsa \
+  --port_hsa \
+  --ip_spare \
+  --port_spare 
+```
+
+
+
+
+
 
 ## Pave Procedure
 

@@ -14,7 +14,7 @@ from pave_repave.leave_cluster import leave_cluster
 logger = logging.getLogger(__name__)
 
 
-def remove_peer(node_cluster: Node, node_peer: Node) -> None:
+def remove_peer(cluster: Node, peer: Node) -> None:
     """
     Remove a peer node from the cluster by automatically retrieving the integration token
     and calling leave_cluster.
@@ -28,18 +28,18 @@ def remove_peer(node_cluster: Node, node_peer: Node) -> None:
     """
     # Log parameters
     logger.debug(
-        f"remove_peer called on cluster node {node_cluster}, peer node: {node_peer}"
+        f"remove_peer called on cluster node {cluster}, peer node: {peer}"
     )
     
     # Get integration token from cluster node
     logger.info("Retrieving integration token from cluster node...")
-    integration_token = get_integration_token(node=node_cluster)
+    integration_token = get_integration_token(node=cluster)
     
     # Call leave_cluster with the retrieved integration token
     logger.info("Calling leave_cluster to remove peer...")
     leave_cluster(
-        node_cluster=node_cluster,
-        node_peer=node_peer,
+        cluster=cluster,
+        peer=peer,
         integration_token=integration_token,
     )
     
