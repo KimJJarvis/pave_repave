@@ -7,9 +7,9 @@ Similar to leave_cluster but automatically retrieves the integration token.
 import json
 import logging
 
-from pave_repave.node import Node
-from pave_repave.get_integration_token import get_integration_token
-from pave_repave.leave_cluster import leave_cluster
+from cluster_client.node import Node
+from cluster_client.get_integration_token import get_integration_token
+from cluster_client.leave_cluster import leave_cluster
 
 logger = logging.getLogger(__name__)
 
@@ -27,14 +27,12 @@ def remove_peer(cluster: Node, peer: Node) -> None:
         RuntimeError: If the API returns HTTP 400, other error status, or unexpected response
     """
     # Log parameters
-    logger.debug(
-        f"remove_peer called on cluster node {cluster}, peer node: {peer}"
-    )
-    
+    logger.debug(f"remove_peer called on cluster node {cluster}, peer node: {peer}")
+
     # Get integration token from cluster node
     logger.info("Retrieving integration token from cluster node...")
     integration_token = get_integration_token(node=cluster)
-    
+
     # Call leave_cluster with the retrieved integration token
     logger.info("Calling leave_cluster to remove peer...")
     leave_cluster(
@@ -42,7 +40,8 @@ def remove_peer(cluster: Node, peer: Node) -> None:
         peer=peer,
         integration_token=integration_token,
     )
-    
+
     logger.info(f"✓ remove_peer completed successfully")
+
 
 # Made with Bob

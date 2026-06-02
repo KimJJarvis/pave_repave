@@ -5,7 +5,7 @@ Node model for representing a cluster node.
 
 from pydantic import BaseModel, field_validator
 
-from pave_repave.utilities import validate_ip_format, validate_port
+from cluster_client.utilities import validate_ip_format, validate_port
 
 
 class Node(BaseModel):
@@ -36,4 +36,3 @@ class Node(BaseModel):
     def __str__(self) -> str:
         """Return string representation of the node."""
         return f"{self.ip},{self.port}"
-

@@ -9,11 +9,11 @@ import sys
 import json
 import logging
 
-from pave_repave.node import Node
-from pave_repave.make_single_api_request import make_single_api_request
-from pave_repave.utilities import setup_logging
-from pave_repave.get_token import get_token
-from pave_repave.config import config
+from cluster_client.node import Node
+from cluster_client.make_single_api_request import make_single_api_request
+from cluster_client.utilities import setup_logging
+from cluster_client.get_token import get_token
+from cluster_client.config import config
 
 logger = logging.getLogger(__name__)
 
@@ -29,50 +29,57 @@ def become_hsa(node: Node, ip_peer: str, integration_token: str) -> None:
 
     Returns:
         Response dictionary from the API
-    
+
     Raises:
         RuntimeError: If the API returns HTTP 400, other error status, or unexpected response
     """
     # Log parameters
     logger.info(f"become_hsa called on {node}, ip_peer: {ip_peer}")
-    
+
     host = config.host if config.port_forward else node.ip
     base_url = f"https://{host}:{node.port}"
     url = f"{base_url}/api/v3/cluster-orchestrator/become-hsa"
 
     data = {"primaryIp": ip_peer, "secondaryIp": node.ip, "token": integration_token}
 
-    response = make_single_api_request(url=url, bearer_token=node.token, method="POST", data=data)
-    
+    response = make_single_api_request(
+        url=url, bearer_token=node.token, method="POST", data=data
+    )
+
     # Log response object
     logger.debug(f"become_hsa response: {json.dumps(response, indent=2)}")
-    
+
     # Check for HTTP status code (default to 200 if not present)
     http_status = response.get("_http_status_code", 200)
-    
+
     if http_status == 400:
-        error_msg = response.get('error', 'Unknown error')
+        error_msg = response.get("error", "Unknown error")
         logger.error(f"HTTP 400 Bad Request: {error_msg}")
         raise RuntimeError(f"become_hsa returned HTTP 400: {response}")
-    
+
     if http_status != 200:
-        error_msg = response.get('error', 'Unknown error')
+        error_msg = response.get("error", "Unknown error")
         logger.error(f"HTTP {http_status} Error: {error_msg}")
-        raise RuntimeError(f"become_hsa returned unexpected HTTP status {http_status}: {response}")
-    
+        raise RuntimeError(
+            f"become_hsa returned unexpected HTTP status {http_status}: {response}"
+        )
+
     # Check for success message
     status_msg = response.get("status", "")
     if "HSA add successfully initiated" not in status_msg:
         logger.error(f"Unexpected response status: {status_msg}")
-        raise RuntimeError(f"become_hsa did not return expected success message. Got: {status_msg}")
-    
-    logger.info(f"✓ become-hsa started: {status_msg}")
+        raise RuntimeError(
+            f"become_hsa did not return expected success message. Got: {status_msg}"
+        )
 
+    logger.info(f"✓ become-hsa started: {status_msg}")
 
 
 def main():
     """Main entry point for the script."""
-    parser = argparse.ArgumentParser(description="Calls the gRPC endpoint api.v3.cluster-orchestrator.become-hsa on a spare node.")
+    parser = argparse.ArgumentParser(
+        description="Calls the gRPC endpoint api.v3.cluster-orchestrator.become-hsa on a spare node."
+    )
     parser.add_argument(
         "--log-level",
         default="ERROR",
@@ -82,16 +89,18 @@ def main():
     parser.add_argument(
         "--log-file", type=str, default=None, help="Log to file instead of console"
     )
+    parser.add_argument("--username", required=True, help="Username for authentication")
+    parser.add_argument("--password", required=True, help="Password for authentication")
     parser.add_argument(
-        "--username", required=True, help="Username for authentication"
+        "--ip", required=True, help="IP address of the spare node (dot format)"
     )
     parser.add_argument(
-        "--password", required=True, help="Password for authentication"
+        "--port", required=True, type=int, help="Port number of the spare node"
     )
-    parser.add_argument("--ip", required=True, help="IP address of the spare node (dot format)")
-    parser.add_argument("--port", required=True, type=int, help="Port number of the spare node")
     parser.add_argument(
-        "--ip_peer", required=True, help="Primary/Peer IP address in the cluster (dot format)"
+        "--ip_peer",
+        required=True,
+        help="Primary/Peer IP address in the cluster (dot format)",
     )
     parser.add_argument("--integration_token", required=True, help="Integration token")
 
@@ -102,13 +111,17 @@ def main():
 
     try:
         # Get authentication token
-        token = get_token(username=args.username, password=args.password, port=args.port)
+        token = get_token(
+            username=args.username, password=args.password, port=args.port
+        )
 
         # Create Node object
         node = Node(port=args.port, token=token, ip=args.ip)
 
         # Call become-hsa
-        response = become_hsa(node=node, ip_peer=args.ip_peer, integration_token=args.integration_token)
+        response = become_hsa(
+            node=node, ip_peer=args.ip_peer, integration_token=args.integration_token
+        )
 
         print("✓ Operation completed successfully!")
     except RuntimeError as e:

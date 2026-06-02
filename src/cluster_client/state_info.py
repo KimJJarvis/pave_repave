@@ -11,20 +11,20 @@ import sys
 import time
 import logging
 
-from pave_repave.config import config
-from pave_repave.node import Node
-from pave_repave.peer_info import peer_info
-from pave_repave.get_token import get_token
-from pave_repave.utilities import (
+from cluster_client.config import config
+from cluster_client.node import Node
+from cluster_client.peer_info import peer_info
+from cluster_client.get_token import get_token
+from cluster_client.utilities import (
     validate_ip_address,
     validate_port,
     validate_token_length,
     setup_logging,
 )
-from pave_repave.peer_info import peer_info
+from cluster_client.peer_info import peer_info
 
 logger = logging.getLogger(__name__)
-
+# logger.disabled = True  # Completely silences this logger
 
 def state1_tuple(state: int) -> str:
     if state == 1:
@@ -40,146 +40,159 @@ def state1_tuple(state: int) -> str:
     else:
         return "unknown"
 
+
 def state1_table(peer: Node, state: int) -> str:
     """
     Print the status of a single node in a two-column table format.
-    
+
     Args:
         peer: Peer node
-    
+
     Returns:
         Formatted string with status information in table format
     """
-    
+
     # Get status for the node
     peer_status = peer_info(peer)
-    
+
     # Define column headers
     fields = ["active_appliance", "primary_ip", "secondary_ip", "id"]
-    
+
     # Define column widths
     col1_width = 20
     col2_width = 20
-    
+
     # Build the table
     lines = []
-    
+
     # Header row
     header = f"{'Field':<{col1_width}} {'Peer':<{col2_width}}"
     lines.append(header)
     lines.append("-" * (col1_width + col2_width + 1))
-    
+
     # Add ip row (first row)
     ip_row = f"{'ip':<{col1_width}} {str(peer.ip):<{col2_width}}"
     lines.append(ip_row)
-    
+
     # Add port row (second row)
     port_row = f"{'port':<{col1_width}} {str(peer.port):<{col2_width}}"
     lines.append(port_row)
-    
+
     # Data rows
     for field in fields:
         peer_value = getattr(peer_status, field, "N/A") if peer_status else "N/A"
-        
+
         # Convert active_appliance integer values to readable strings
         if field == "active_appliance":
-            peer_value = "Primary" if peer_value == 1 else ("Secondary" if peer_value == 2 else "N/A")
-        
+            peer_value = (
+                "Primary"
+                if peer_value == 1
+                else ("Secondary" if peer_value == 2 else "N/A")
+            )
+
         row = f"{field:<{col1_width}} {str(peer_value):<{col2_width}}"
         lines.append(row)
 
-    
     # Add status row with state information
     status_value = state1_tuple(state)
     status_row = f"{'status':<{col1_width}} {status_value:<{col2_width}}"
     lines.append(status_row)
-    
+
     return "\n".join(lines)
+
 
 def state2_tuple(state: int) -> tuple[str, str]:
     if state == 1:
-        return ("active primary","spare")
+        return ("active primary", "spare")
     elif state == 2:
-        return ("active primary","passive secondary")
+        return ("active primary", "passive secondary")
     elif state == 3:
         return ("passive primary", "active secondary")
     elif state == 4:
-        return ("passive secondary","active primary")
-    else: 
+        return ("passive secondary", "active primary")
+    else:
         return ("unkown", "unknown")
-        
+
 
 def state2_table(peer: Node, hsa: Node, state: int) -> str:
     """
     Print the status of three nodes in a three-column table format.
-    
+
     Args:
         peer: Peer node
         hsa: HSA node
         state: Current state number (0-4)
-    
+
     Returns:
         Formatted string with status information in table format
     """
-   
+
     # Get status for each node
     peer_status = peer_info(peer)
     hsa_status = peer_info(hsa)
-    
+
     # Define column headers
     fields = ["active_appliance", "primary_ip", "secondary_ip", "id"]
-    
+
     # Define column widths
     col1_width = 20
     col2_width = 20
     col3_width = 20
-    
+
     # Build the table
     lines = []
-    
+
     # Header row
     header = f"{'Field':<{col1_width}} {'Peer':<{col2_width}} {'HSA':<{col3_width}}"
     lines.append(header)
     lines.append("-" * (col1_width + col2_width + col3_width + 3))
-    
+
     # Add ip row (first row)
-    ip_row = f"{'ip':<{col1_width}} {str(peer.ip):<{col2_width}} {str(hsa.ip):<{col3_width}}"
+    ip_row = (
+        f"{'ip':<{col1_width}} {str(peer.ip):<{col2_width}} {str(hsa.ip):<{col3_width}}"
+    )
     lines.append(ip_row)
-    
+
     # Add port row (second row)
     port_row = f"{'port':<{col1_width}} {str(peer.port):<{col2_width}} {str(hsa.port):<{col3_width}}"
     lines.append(port_row)
-    
+
     # Data rows
     for field in fields:
         peer_value = getattr(peer_status, field, "N/A") if peer_status else "N/A"
         hsa_value = getattr(hsa_status, field, "N/A") if hsa_status else "N/A"
 
-        
         # Convert active_appliance integer values to readable strings
         if field == "active_appliance":
-            peer_value = "Primary" if peer_value == 1 else ("Secondary" if peer_value == 2 else "N/A")
-            hsa_value = "Primary" if hsa_value == 1 else ("Secondary" if hsa_value == 2 else "N/A")
-        
+            peer_value = (
+                "Primary"
+                if peer_value == 1
+                else ("Secondary" if peer_value == 2 else "N/A")
+            )
+            hsa_value = (
+                "Primary"
+                if hsa_value == 1
+                else ("Secondary" if hsa_value == 2 else "N/A")
+            )
+
         row = f"{field:<{col1_width}} {str(peer_value):<{col2_width}} {str(hsa_value):<{col3_width}}"
         lines.append(row)
-    
+
     # Add status row with state information
     status_tuple = state2_tuple(state)
     status_row = f"{'status':<{col1_width}} {status_tuple[0]:<{col2_width}} {status_tuple[1]:<{col3_width}}"
     lines.append(status_row)
-    
-    return "\n".join(lines)
 
+    return "\n".join(lines)
 
 
 def state3_tuple(state: int) -> tuple[str, str, str]:
     if state == 1:
-        return ("active primary","spare","spare")
+        return ("active primary", "spare", "spare")
     if state == 2:
-        return ("active primary","passive secondary","spare")
+        return ("active primary", "passive secondary", "spare")
     elif state == 3:
-        return ("passive primary","active secondary","spare")       
+        return ("passive primary", "active secondary", "spare")
     elif state == 4:
         return ("passive secondary", "active primary", "spare")
     elif state == 5:
@@ -190,53 +203,56 @@ def state3_tuple(state: int) -> tuple[str, str, str]:
         return ("retired", "passive primary", "active secondary")
     elif state == 8:
         return ("retired", "passive secondary", "active primary")
-    else: 
+    else:
         return ("unkown", "unknown", "unknown")
 
 
-def get_state1(peer: Node)-> int:
-    logger.debug(f"get_state1 {peer}") 
+def get_state1(peer: Node) -> int:
+    logger.debug(f"get_state1 {peer}")
     peer_status_on_peer = peer_info(node=peer)
     if peer_status_on_peer is None:
         logger.debug(f"Peer is not running")
-        loopback_status_on_peer=peer_info(Node(port=peer.port, token=peer.token, ip="127.0.0.1"))
-        if (loopback_status_on_peer is not None):
-            logger.debug(f"Peer is spare") 
+        loopback_status_on_peer = peer_info(
+            Node(port=peer.port, token=peer.token, ip="127.0.0.1")
+        )
+        if loopback_status_on_peer is not None:
+            logger.debug(f"Peer is spare")
             return 5
-    elif(
+    elif (
         peer_status_on_peer is not None
         and peer_status_on_peer.primary_ip == peer.ip
         and peer_status_on_peer.active_appliance == 1
     ):
-        logger.debug(f"Peer is active primary") 
+        logger.debug(f"Peer is active primary")
         return 1
-    elif(
+    elif (
         peer_status_on_peer is not None
         and peer_status_on_peer.secondary_ip == peer.ip
         and peer_status_on_peer.active_appliance == 2
     ):
-        logger.debug(f"Peer is active secondary") 
+        logger.debug(f"Peer is active secondary")
         return 2
-    elif(
+    elif (
         peer_status_on_peer is not None
         and peer_status_on_peer.primary_ip == peer.ip
         and peer_status_on_peer.active_appliance == 2
     ):
-        logger.debug(f"Peer is passive primary") 
+        logger.debug(f"Peer is passive primary")
         return 3
-    elif(
+    elif (
         peer_status_on_peer is not None
         and peer_status_on_peer.secondary_ip == peer.ip
         and peer_status_on_peer.active_appliance == 1
     ):
-        logger.debug(f"Peer is passive secondary") 
+        logger.debug(f"Peer is passive secondary")
         return 4
     else:
-        logger.debug(f"Invalid state") 
+        logger.debug(f"Invalid state")
     return 0
 
+
 def get_state2(peer: Node, hsa: Node) -> int:
-    logger.debug(f"get_state2 {peer} {hsa}") 
+    logger.debug(f"get_state2 {peer} {hsa}")
     """
     Determine the current state of the peer/HSA cluster.
     """
@@ -244,28 +260,30 @@ def get_state2(peer: Node, hsa: Node) -> int:
 
     if peer_status_on_peer is None:
         logger.debug(f"Peer is not running")
-    elif(
+    elif (
         peer_status_on_peer is not None
         and peer_status_on_peer.primary_ip == peer.ip
         and peer_status_on_peer.secondary_ip == ""
         and peer_status_on_peer.active_appliance == 1
     ):
-        logger.debug(f"Peer is active primary") 
+        logger.debug(f"Peer is active primary")
         hsa_status_on_hsa = peer_info(node=hsa)
-        if (hsa_status_on_hsa is None):
-            loopback_status_on_hsa=peer_info(Node(port=hsa.port, token=hsa.token, ip="127.0.0.1"))
-            if (loopback_status_on_hsa is not None):
-                logger.debug(f"HSA is spare") 
+        if hsa_status_on_hsa is None:
+            loopback_status_on_hsa = peer_info(
+                Node(port=hsa.port, token=hsa.token, ip="127.0.0.1")
+            )
+            if loopback_status_on_hsa is not None:
+                logger.debug(f"HSA is spare")
                 return 1
             else:
                 logger.debug(f"HSA not spare")
-    elif(
+    elif (
         peer_status_on_peer is not None
         and peer_status_on_peer.primary_ip == peer.ip
         and peer_status_on_peer.secondary_ip == hsa.ip
         and peer_status_on_peer.active_appliance == 1
     ):
-        logger.debug(f"Peer is active primary") 
+        logger.debug(f"Peer is active primary")
         hsa_status_on_hsa = peer_info(node=hsa)
         if (
             hsa_status_on_hsa is not None
@@ -274,16 +292,16 @@ def get_state2(peer: Node, hsa: Node) -> int:
             and hsa_status_on_hsa.active_appliance == 1
         ):
             logger.debug(f"HSA status match")
-            return 2 
+            return 2
         else:
             logger.debug(f"HSA status mismatch")
-    elif(
+    elif (
         peer_status_on_peer is not None
         and peer_status_on_peer.primary_ip == peer.ip
         and peer_status_on_peer.secondary_ip == hsa.ip
         and peer_status_on_peer.active_appliance == 2
     ):
-        logger.debug(f"Peer is passive primary") 
+        logger.debug(f"Peer is passive primary")
         hsa_status_on_hsa = peer_info(node=hsa)
         if (
             hsa_status_on_hsa is not None
@@ -292,16 +310,16 @@ def get_state2(peer: Node, hsa: Node) -> int:
             and hsa_status_on_hsa.active_appliance == 2
         ):
             logger.debug(f"HSA status match")
-            return 3 
+            return 3
         else:
             logger.debug(f"HSA status mismatch")
-    elif(
+    elif (
         peer_status_on_peer is not None
         and peer_status_on_peer.primary_ip == hsa.ip
         and peer_status_on_peer.secondary_ip == peer.ip
         and peer_status_on_peer.active_appliance == 1
     ):
-        logger.debug(f"Peer is passive secondary") 
+        logger.debug(f"Peer is passive secondary")
         hsa_status_on_hsa = peer_info(node=hsa)
         if (
             hsa_status_on_hsa is not None
@@ -310,11 +328,11 @@ def get_state2(peer: Node, hsa: Node) -> int:
             and hsa_status_on_hsa.active_appliance == 1
         ):
             logger.debug(f"HSA status match")
-            return 4 
+            return 4
         else:
             logger.debug(f"HSA status mismatch")
     else:
-        logger.debug(f"Invalid state") 
+        logger.debug(f"Invalid state")
     return 0
 
 
@@ -356,7 +374,9 @@ def wait_state1(state: int, peer: Node) -> None:
             logger.debug(
                 f"Current state is {current_state}, not {state}. Waiting {config.wait_state_retry_delay} seconds before retry..."
             )
-            logger.info(f"Wait {config.wait_state_retry_delay} seconds. Retry attempt {retry_count}/{max_retries}...")
+            logger.info(
+                f"Wait {config.wait_state_retry_delay} seconds. Retry attempt {retry_count}/{max_retries}..."
+            )
             time.sleep(config.wait_state_retry_delay)
         else:
             current_state = get_state1(peer=peer)
@@ -438,7 +458,9 @@ def wait_state2(state: int, peer: Node, hsa: Node) -> None:
             logger.debug(
                 f"Current state is {current_state}, not {state}. Waiting {config.wait_state_retry_delay} seconds before retry..."
             )
-            logger.info(f"Wait {config.wait_state_retry_delay} seconds. Retry attempt {retry_count}/{max_retries}...")
+            logger.info(
+                f"Wait {config.wait_state_retry_delay} seconds. Retry attempt {retry_count}/{max_retries}..."
+            )
             time.sleep(config.wait_state_retry_delay)
         else:
             current_state = get_state2(peer=peer, hsa=hsa)
@@ -452,14 +474,14 @@ def wait_valid_state2(peer: Node, hsa: Node) -> int:
     """
     Wait for the system to reach a valid (non-zero) state.
     Retries up to 10 times with 30 second waits between attempts.
-    
+
     Args:
         peer: Peer node
         hsa: HSA node
-    
+
     Returns:
         The valid state number (1-4) when reached
-        
+
     Raises:
         RuntimeError: If a valid state is not reached after maximum retries
     """
@@ -475,7 +497,7 @@ def wait_valid_state2(peer: Node, hsa: Node) -> int:
 
         # Check current state
         current_state = get_state2(peer=peer, hsa=hsa)
-        
+
         if current_state != 0:
             logger.debug(f"✓ Valid state {current_state} reached successfully")
             return current_state
@@ -486,11 +508,13 @@ def wait_valid_state2(peer: Node, hsa: Node) -> int:
             logger.debug(
                 f"Current state is 0 (invalid). Waiting {config.wait_state_retry_delay} seconds before retry..."
             )
-            print(f"Current state is 0 (invalid). Waiting {config.wait_state_retry_delay} seconds before retry...")
+            print(
+                f"Current state is 0 (invalid). Waiting {config.wait_state_retry_delay} seconds before retry..."
+            )
             time.sleep(config.wait_state_retry_delay)
 
     time.sleep(config.wait_state_settle_delay)
-    
+
     # If we exit the loop without returning, raise an error
     raise RuntimeError(
         f"wait_valid_state failed: Valid state not reached after maximum retries (current state: 0)"
@@ -535,78 +559,91 @@ def postcondition2(state: int, peer: Node, hsa: Node) -> None:
 
 def state3_table(peer: Node, hsa: Node, spare: Node, state: int) -> str:
     """
-    Print the status of three nodes in a four-column table format.
-    
+    Print the status of three nodes in a markdown table format.
+
     Args:
         peer: Peer node
         hsa: HSA node
         spare: Spare node
         state: Current state number (0-7)
-    
+
     Returns:
-        Formatted string with status information in table format
+        Formatted string with status information in markdown table format
     """
- 
-    
+
     # Get status for each node
     peer_status = peer_info(peer)
     hsa_status = peer_info(hsa)
     spare_status = peer_info(spare)
-    
+
     # Define column headers
     fields = ["active_appliance", "primary_ip", "secondary_ip", "id"]
-    
-    # Define column widths
-    col1_width = 20
-    col2_width = 20
-    col3_width = 20
-    col4_width = 20
-    
+
+    # Define column widths for alignment
+    col1_width = 18  # Field column
+    col2_width = 20  # Peer column
+    col3_width = 20  # HSA column
+    col4_width = 20  # Spare column
+
     # Build the table
     lines = []
-    
+
     # Header row
-    header = f"{'Field':<{col1_width}} {'Peer':<{col2_width}} {'HSA':<{col3_width}} {'Spare':<{col4_width}}"
+    header = f"| {'Field':<{col1_width}} | {'Peer':<{col2_width}} | {'HSA':<{col3_width}} | {'Spare':<{col4_width}} |"
     lines.append(header)
-    lines.append("-" * (col1_width + col2_width + col3_width + col4_width + 3))
     
+    # Separator row (markdown table format)
+    separator = f"|{'-' * (col1_width + 2)}|{'-' * (col2_width + 2)}|{'-' * (col3_width + 2)}|{'-' * (col4_width + 2)}|"
+    lines.append(separator)
+
     # Add ip row (first row)
-    ip_row = f"{'ip':<{col1_width}} {str(peer.ip):<{col2_width}} {str(hsa.ip):<{col3_width}} {str(spare.ip):<{col4_width}}"
+    ip_row = f"| {'ip':<{col1_width}} | {str(peer.ip):<{col2_width}} | {str(hsa.ip):<{col3_width}} | {str(spare.ip):<{col4_width}} |"
     lines.append(ip_row)
-    
+
     # Add port row (second row)
-    port_row = f"{'port':<{col1_width}} {str(peer.port):<{col2_width}} {str(hsa.port):<{col3_width}} {str(spare.port):<{col4_width}}"
+    port_row = f"| {'port':<{col1_width}} | {str(peer.port):<{col2_width}} | {str(hsa.port):<{col3_width}} | {str(spare.port):<{col4_width}} |"
     lines.append(port_row)
-    
+
     # Data rows
     for field in fields:
         peer_value = getattr(peer_status, field, "N/A") if peer_status else "N/A"
         hsa_value = getattr(hsa_status, field, "N/A") if hsa_status else "N/A"
         spare_value = getattr(spare_status, field, "N/A") if spare_status else "N/A"
-        
+
         # Convert active_appliance integer values to readable strings
         if field == "active_appliance":
-            peer_value = "Primary" if peer_value == 1 else ("Secondary" if peer_value == 2 else "N/A")
-            hsa_value = "Primary" if hsa_value == 1 else ("Secondary" if hsa_value == 2 else "N/A")
-            spare_value = "Primary" if spare_value == 1 else ("Secondary" if spare_value == 2 else "N/A")
-        
-        row = f"{field:<{col1_width}} {str(peer_value):<{col2_width}} {str(hsa_value):<{col3_width}} {str(spare_value):<{col4_width}}"
+            peer_value = (
+                "Primary"
+                if peer_value == 1
+                else ("Secondary" if peer_value == 2 else "N/A")
+            )
+            hsa_value = (
+                "Primary"
+                if hsa_value == 1
+                else ("Secondary" if hsa_value == 2 else "N/A")
+            )
+            spare_value = (
+                "Primary"
+                if spare_value == 1
+                else ("Secondary" if spare_value == 2 else "N/A")
+            )
+
+        row = f"| {field:<{col1_width}} | {str(peer_value):<{col2_width}} | {str(hsa_value):<{col3_width}} | {str(spare_value):<{col4_width}} |"
         lines.append(row)
-    
+
     # Add status row with state information
     status_tuple = state3_tuple(state)
-    status_row = f"{'status':<{col1_width}} {status_tuple[0]:<{col2_width}} {status_tuple[1]:<{col3_width}} {status_tuple[2]:<{col4_width}}"
+    status_row = f"| {'status':<{col1_width}} | {status_tuple[0]:<{col2_width}} | {status_tuple[1]:<{col3_width}} | {status_tuple[2]:<{col4_width}} |"
     lines.append(status_row)
-    
+
     return "\n".join(lines)
 
 
-
 def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
-    logger.debug(f"get_state2 {peer} {hsa} {spare}") 
     """
     Determine the current state of the peer/HSA cluster.
     """
+    logger.debug(f"get_state3 {peer} {hsa} {spare}")
     peer_status_on_peer = peer_info(node=peer)
     hsa_status_on_hsa = peer_info(node=hsa)
 
@@ -616,15 +653,19 @@ def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
         and peer_status_on_peer.secondary_ip == hsa.ip
         and peer_status_on_peer.active_appliance == 1
     ):
-        logger.debug(f"Peer is active primary") 
+        logger.debug(f"Peer is active primary")
         if hsa_status_on_hsa is None:
-            logger.debug(f"HSA is spare") 
-            loopback_status_on_hsa=peer_info(Node(port=hsa.port, token=hsa.token, ip="127.0.0.1"))
-            if (loopback_status_on_hsa is not None):
-                logger.debug(f"HSA is spare") 
-                loopback_status_on_spare=peer_info(Node(port=spare.port, token=spare.token, ip="127.0.0.1"))
-                if (loopback_status_on_spare is not None):
-                    logger.debug(f"Spare is spare") 
+            logger.debug(f"HSA is spare")
+            loopback_status_on_hsa = peer_info(
+                Node(port=hsa.port, token=hsa.token, ip="127.0.0.1")
+            )
+            if loopback_status_on_hsa is not None:
+                logger.debug(f"HSA is spare")
+                loopback_status_on_spare = peer_info(
+                    Node(port=spare.port, token=spare.token, ip="127.0.0.1")
+                )
+                if loopback_status_on_spare is not None:
+                    logger.debug(f"Spare is spare")
                     return 1
         elif (
             hsa_status_on_hsa is not None
@@ -632,15 +673,17 @@ def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
             and hsa_status_on_hsa.secondary_ip == hsa.ip
             and hsa_status_on_hsa.active_appliance == 1
         ):
-            logger.debug(f"HSA is passive secondary") 
-            loopback_status_on_spare=peer_info(Node(port=spare.port, token=spare.token, ip="127.0.0.1"))
-            if (loopback_status_on_spare is not None):
-                logger.debug(f"Spare is spare") 
+            logger.debug(f"HSA is passive secondary")
+            loopback_status_on_spare = peer_info(
+                Node(port=spare.port, token=spare.token, ip="127.0.0.1")
+            )
+            if loopback_status_on_spare is not None:
+                logger.debug(f"Spare is spare")
                 return 2
-            logger.debug(f"Spare is not spare")             
+            logger.debug(f"Spare is not spare")
         else:
             logger.debug(f"HSA status does not match")
-        return 0             
+        return 0
     elif (
         peer_status_on_peer is not None
         and peer_status_on_peer.primary_ip == peer.ip
@@ -654,50 +697,56 @@ def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
             and hsa_status_on_hsa.secondary_ip == hsa.ip
             and hsa_status_on_hsa.active_appliance == 2
         ):
-            logger.debug(f"HSA is active secondary") 
-            loopback_status_on_spare=peer_info(Node(port=spare.port, token=spare.token, ip="127.0.0.1"))
-            if (loopback_status_on_spare is not None):
-                logger.debug(f"Spare is spare") 
+            logger.debug(f"HSA is active secondary")
+            loopback_status_on_spare = peer_info(
+                Node(port=spare.port, token=spare.token, ip="127.0.0.1")
+            )
+            if loopback_status_on_spare is not None:
+                logger.debug(f"Spare is spare")
                 return 3
-            logger.debug(f"Spare is not spare")             
+            logger.debug(f"Spare is not spare")
         else:
             logger.debug(f"HSA status does not match")
-        return 0             
+        return 0
     elif (
         peer_status_on_peer is not None
         and peer_status_on_peer.primary_ip == hsa.ip
         and peer_status_on_peer.secondary_ip == peer.ip
         and peer_status_on_peer.active_appliance == 1
     ):
-        logger.debug(f"Peer is passive secondary") 
+        logger.debug(f"Peer is passive secondary")
         if (
             hsa_status_on_hsa is not None
             and hsa_status_on_hsa.primary_ip == hsa.ip
             and hsa_status_on_hsa.secondary_ip == peer.ip
             and hsa_status_on_hsa.active_appliance == 1
         ):
-            logger.debug(f"HSA is active secondary") 
-            loopback_status_on_spare=peer_info(Node(port=spare.port, token=spare.token, ip="127.0.0.1"))
-            if (loopback_status_on_spare is not None):
-                logger.debug(f"Spare is spare") 
+            logger.debug(f"HSA is active secondary")
+            loopback_status_on_spare = peer_info(
+                Node(port=spare.port, token=spare.token, ip="127.0.0.1")
+            )
+            if loopback_status_on_spare is not None:
+                logger.debug(f"Spare is spare")
                 return 4
-            logger.debug(f"Spare is not spare")             
+            logger.debug(f"Spare is not spare")
         else:
             logger.debug(f"HSA status does not match")
-        return 0             
+        return 0
     elif (
         peer_status_on_peer is not None
         and peer_status_on_peer.primary_ip == peer.ip
         and peer_status_on_peer.secondary_ip == ""
         and peer_status_on_peer.active_appliance == 1
     ):
-        logger.debug(f"Peer has no secondary") 
+        logger.debug(f"Peer has no secondary")
         return 0
-    elif (peer_status_on_peer is None):
+    elif peer_status_on_peer is None:
         logger.debug(f"Peer is not in cluster")
-        loopback_status_on_peer=peer_info(Node(port=peer.port, token=peer.token, ip="127.0.0.1")) 
-        if (loopback_status_on_peer is not None):
-            logger.debug(f"Peer is spare") 
+        loopback_status_on_peer = peer_info(
+            Node(port=peer.port, token=peer.token, ip="127.0.0.1")
+        )
+        if loopback_status_on_peer is not None:
+            logger.debug(f"Peer is spare")
             if (
                 hsa_status_on_hsa is not None
                 and hsa_status_on_hsa.primary_ip == hsa.ip
@@ -705,9 +754,11 @@ def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
                 and hsa_status_on_hsa.active_appliance == 1
             ):
                 logger.debug(f"HSA is active primary, stand alone")
-                loopback_status_on_spare=peer_info(Node(port=spare.port, token=spare.token, ip="127.0.0.1"))
-                if (loopback_status_on_spare is not None):
-                    logger.debug(f"Spare is spare") 
+                loopback_status_on_spare = peer_info(
+                    Node(port=spare.port, token=spare.token, ip="127.0.0.1")
+                )
+                if loopback_status_on_spare is not None:
+                    logger.debug(f"Spare is spare")
                     return 5
             elif (
                 hsa_status_on_hsa is not None
@@ -716,7 +767,9 @@ def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
                 and hsa_status_on_hsa.active_appliance == 1
             ):
                 logger.debug(f"HSA is active primary, spare is passive secondary")
-                spare_status_on_spare=peer_info(Node(port=spare.port, token=hsa.token, ip=spare.ip)) 
+                spare_status_on_spare = peer_info(
+                    Node(port=spare.port, token=hsa.token, ip=spare.ip)
+                )
                 if (
                     spare_status_on_spare is not None
                     and spare_status_on_spare.primary_ip == hsa.ip
@@ -734,7 +787,9 @@ def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
                 and hsa_status_on_hsa.active_appliance == 2
             ):
                 logger.debug(f"HSA is passive primary, spare is active secondary")
-                spare_status_on_spare=peer_info(Node(port=spare.port, token=hsa.token, ip=spare.ip)) 
+                spare_status_on_spare = peer_info(
+                    Node(port=spare.port, token=hsa.token, ip=spare.ip)
+                )
                 if (
                     spare_status_on_spare is not None
                     and spare_status_on_spare.primary_ip == hsa.ip
@@ -752,7 +807,9 @@ def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
                 and hsa_status_on_hsa.active_appliance == 1
             ):
                 logger.debug(f"HSA is passive secondary, spare is active primary")
-                loopback_status_on_spare=peer_info(Node(port=spare.port, token=hsa.token, ip=spare.ip)) 
+                loopback_status_on_spare = peer_info(
+                    Node(port=spare.port, token=hsa.token, ip=spare.ip)
+                )
                 if (
                     loopback_status_on_spare is not None
                     and loopback_status_on_spare.primary_ip == spare.ip
@@ -763,18 +820,16 @@ def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
                     return 8
                 logger.debug(f"Spare status does not match")
                 return 0
-            elif (
-                hsa_status_on_hsa is None
-            ):
-                logger.debug(f"HSA is spare") 
-            else: 
-                logger.debug(f"Invalid state") 
+            elif hsa_status_on_hsa is None:
+                logger.debug(f"HSA is spare")
+            else:
+                logger.debug(f"Invalid state")
                 return 0
-        logger.debug(f"Peer is not spare")             
-        return 0             
+        logger.debug(f"Peer is not spare")
+        return 0
     else:
         logger.debug(f"Unmatched state")
-        return 0             
+        return 0
     return 0
 
 
@@ -816,7 +871,9 @@ def wait_state3(state: int, peer: Node, hsa: Node, spare: Node) -> None:
             logger.debug(
                 f"Current state is {current_state}, not {state}. Waiting {config.wait_state_retry_delay} seconds before retry..."
             )
-            logger.info(f"Wait {config.wait_state_retry_delay} seconds. Retry attempt {retry_count}/{max_retries}...")
+            logger.info(
+                f"Wait {config.wait_state_retry_delay} seconds. Retry attempt {retry_count}/{max_retries}..."
+            )
             time.sleep(config.wait_state_retry_delay)
         else:
             current_state = get_state3(peer=peer, hsa=hsa, spare=spare)
@@ -830,15 +887,15 @@ def wait_valid_state3(peer: Node, hsa: Node, spare: Node) -> int:
     """
     Wait for the system to reach a valid (non-zero) state.
     Retries up to 10 times with 30 second waits between attempts.
-    
+
     Args:
         peer: Peer node
         hsa: HSA node
         spare: Spare node
-    
+
     Returns:
         The valid state number (1-7) when reached
-        
+
     Raises:
         RuntimeError: If a valid state is not reached after maximum retries
     """
@@ -854,7 +911,7 @@ def wait_valid_state3(peer: Node, hsa: Node, spare: Node) -> int:
 
         # Check current state
         current_state = get_state3(peer=peer, hsa=hsa, spare=spare)
-        
+
         if current_state != 0:
             logger.debug(f"✓ Valid state {current_state} reached successfully")
             return current_state
@@ -865,11 +922,13 @@ def wait_valid_state3(peer: Node, hsa: Node, spare: Node) -> int:
             logger.warning(
                 f"Current state is 0 (invalid). Waiting {config.wait_state_retry_delay} seconds before retry..."
             )
-            print(f"Current state is 0 (invalid). Waiting {config.wait_state_retry_delay} seconds before retry...")
+            print(
+                f"Current state is 0 (invalid). Waiting {config.wait_state_retry_delay} seconds before retry..."
+            )
             time.sleep(config.wait_state_retry_delay)
 
     time.sleep(config.wait_state_settle_delay)
-    
+
     # If we exit the loop without returning, raise an error
     raise RuntimeError(
         f"wait_valid_state failed: Valid state not reached after maximum retries (current state: 0)"
@@ -926,21 +985,23 @@ def main():
     parser.add_argument(
         "--log-file", type=str, default=None, help="Log to file instead of console"
     )
+    parser.add_argument("--username", required=True, help="Username for authentication")
+    parser.add_argument("--password", required=True, help="Password for authentication")
     parser.add_argument(
-        "--username", required=True, help="Username for authentication"
+        "--ip_peer", required=True, help="IP address of the peer node (in dot format)"
     )
-    parser.add_argument(
-        "--password", required=True, help="Password for authentication"
-    )
-    parser.add_argument("--ip_peer", required=True, help="IP address of the peer node (in dot format)")
     parser.add_argument(
         "--port_peer", required=True, type=int, help="Port number for peer node"
     )
-    parser.add_argument("--ip_hsa", required=True, help="IP address of the HSA node (in dot format)")
+    parser.add_argument(
+        "--ip_hsa", required=True, help="IP address of the HSA node (in dot format)"
+    )
     parser.add_argument(
         "--port_hsa", required=True, type=int, help="Port number for HSA node"
     )
-    parser.add_argument("--ip_spare", required=True, help="IP address of the spare node")
+    parser.add_argument(
+        "--ip_spare", required=True, help="IP address of the spare node"
+    )
     parser.add_argument(
         "--port_spare", required=True, type=int, help="Port number for spare node"
     )
@@ -952,13 +1013,19 @@ def main():
 
     # Get authentication tokens for each node
     logger.debug("Retrieving authentication token for peer node...")
-    token_peer = get_token(username=args.username, password=args.password, port=args.port_peer)
-    
+    token_peer = get_token(
+        username=args.username, password=args.password, port=args.port_peer
+    )
+
     logger.debug("Retrieving authentication token for HSA node...")
-    token_hsa = get_token(username=args.username, password=args.password, port=args.port_hsa)
-    
+    token_hsa = get_token(
+        username=args.username, password=args.password, port=args.port_hsa
+    )
+
     logger.debug("Retrieving authentication token for spare node...")
-    token_spare = get_token(username=args.username, password=args.password, port=args.port_spare)
+    token_spare = get_token(
+        username=args.username, password=args.password, port=args.port_spare
+    )
 
     # Construct Node objects
     peer_node = Node(port=args.port_peer, token=token_peer, ip=args.ip_peer)
@@ -969,7 +1036,11 @@ def main():
     current_state = get_state3(peer=peer_node, hsa=hsa_node, spare=spare_node)
 
     # Print the state table with state information
-    print(state3_table(peer=peer_node, hsa=hsa_node, spare=spare_node, state=current_state))
+    print(
+        state3_table(
+            peer=peer_node, hsa=hsa_node, spare=spare_node, state=current_state
+        )
+    )
     print()
 
     # Print state to console (stdout)

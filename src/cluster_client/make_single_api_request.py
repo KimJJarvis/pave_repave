@@ -15,7 +15,7 @@ import logging
 import time
 from typing import Dict, Any, Optional
 
-from pave_repave.config import config
+from cluster_client.config import config
 
 logger = logging.getLogger(__name__)
 # logger.disabled = True  # Completely silences this logger
@@ -75,7 +75,7 @@ def make_single_api_request(
     # Retry logic for 502 errors
     max_retries = config.http_502_max_retries
     retry_delay = config.http_502_retry_delay
-    
+
     for attempt in range(max_retries):
         # Create request (needs to be recreated for each attempt)
         request = urllib.request.Request(
@@ -84,7 +84,7 @@ def make_single_api_request(
 
         if attempt > 0:
             logger.info(f"Retry attempt {attempt} of {max_retries - 1} after 502 error")
-        
+
         logger.debug("Sending request...")
 
         try:
@@ -107,7 +107,9 @@ def make_single_api_request(
             # Handle 502 Bad Gateway with retry logic
             if e.code == 502:
                 if attempt < max_retries - 1:
-                    logger.warning(f"HTTP 502 Bad Gateway received. Waiting {retry_delay} seconds before retry...")
+                    logger.warning(
+                        f"HTTP 502 Bad Gateway received. Waiting {retry_delay} seconds before retry..."
+                    )
                     time.sleep(retry_delay)
                     continue  # Retry the request
                 else:
@@ -155,6 +157,6 @@ def make_single_api_request(
             logger.error(f"Unexpected error: {type(e).__name__}: {e}")
             logger.error(f"URL: {url}")
             raise RuntimeError(f"Unexpected error: {type(e).__name__}: {e}") from e
-    
+
     # This should never be reached due to the exception handling above
     raise RuntimeError(f"Unexpected exit from retry loop for {url}")

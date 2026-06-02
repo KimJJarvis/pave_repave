@@ -1,512 +1,172 @@
 # Cluster Client
 
-## Repave Procedure
+## Using the Cluster Client
 
+### Port forwarding
 
-The Repave Procedure replaces a peer in a NMS cluster with a spare.
+The cluster client accesses the cluster nodes either directly or via port forwarding.  For example, this peer_info API call will be forwarded via localhost:8443. 
 
-
-
-```
-cluster-client repave \
+```bash
+uv run cluster_client peer_info \
   --ip_peer 192.168.122.45\
-  --port_pee \ 
-  --ip_hsa \
-  --port_hsa \
-  --ip_spare \
-  --port_spare 
+  --port_pee 8443 \
+  --port-forward 
 ```
 
 
+When port forwarding is active, the API requests will be directed to `https://localhost:8443/api/v3/`.  When port forwarding is inactive, API requests will be directed to `https://192.168.122.45:8443/api/v3/`.  Port forwarding is inactive by default.  The default configuration can be overriden by an using an environment variable
 
+```bash
+export CLUSTER_CLIENT_PORT_FORWARD=1 # Use port forwarding by default
+```
 
+### Authentication
 
+Authentication tokens are retrieved using the signin API.  A valid userid and password must be specified to the command either by using `--username` and `--password` or by setting a environment variables.
 
-## Pave Procedure
-
-The Pave Procedure replaces a peer in a NMS cluster.
-
-The peer node will be replaced by its secondary and retired.  Initially, the peer must be an active node in the NMS cluster and it must have a passive secondary.  When the Procedure is complete, the secondary node will be the active peer in the NMS cluster and the peer will be retired.
-
-| Action v3/api                            | Target | State | Active    | Primary | Secondary | Retired |
-| ---------------------------------------- | ------ | ----- | --------- | ------- | --------- | ------- |
-| Initial state                            |        | 1     | Primary   | A       | B         |         |
-| cluster-manager/fail-over                | A      | 2     | Secondary | A       | B         |         |
-| cluster-manager/switch-primary-secondary | B      | 3     | Primary   | B       | A         |         |
-| cluster-orchestrator/integration-token   | B      |       | Primary   | B       | A         |         |
-| cluster-orchestrator/leave_cluster_hsa   | A      | 4     | Primary   | B       |           | A       |
-
-- **A,B** NMS Nodes.
-- **Action v3/api** The API call.
-- **Target** The target node to which the API call is sent.
-- **State** The state of the cluster prior to the action. States are listed in the table below.
-- **Active** The active node in the peers table.
-- **Primary** The primary node in the peers table.
-- **Secondary** The secondary node in the peers table.
-- **Retired** The retired node which will not appare in the peers table.
+```bash
+export CLUSTER_CLIENT_USERNAME="admin"
+export CLUSTER_CLIENT_PASSWORD="secret"
+``` 
 
 ## Repave Procedure
 
-The Repave Procedure ensures high availability for a peer in a NMS cluster.
+The Repave Procedure replaces a peer in a NMS cluster with a spare.  
 
-The peer node will be replaced by a spare node. Initially, the peer must not have a secondary.  When the procedure is complete, the spare node will be the active peer in the NMS cluster, the peer will be its secondary.
-
-
-| Action v3/api                            | Target | State | Active    | Primary | Secondary | Spare |
-| ---------------------------------------- | ------ | ----- | --------- | ------- | --------- | ----- |
-| Initial state                            |        | 5     | Pimary    | B       |           | C     |
-| cluster-orchestrator/integration-token   | B      |       | Primary   | B       |           | C     |
-| cluster-orchestrator/become_hsa          | C      | 1     | Primary   | B       | C         |       |
-| cluster-manager/fail-over                | B      | 2     | Secondary | B       | C         |       |
-| cluster-manager/switch-primary-secondary | C      | 3     | Primary   | C       | B         |       |
-
-- **B,C** NMS Nodes.
-- **Action v3/api** The API call.
-- **Target** The target node to which the API call is sent.
-- **State** The state of the cluster prior to the action. States are listed in the table below.
-- **Active** The active node in the peers table.
-- **Primary** The primary node in the peers table.
-- **Secondary** The secondary node in the peers table.
-- **Spare** A spare node which will join the cluster.
-
-## State 
-
-| State | Peer<br>active_applicance | Peer<br>primary_ip | Peer<br>secondary_ip | Other             | Other<br>found | Other<br>active_appliance | Other<br>primary_ip | Other<br>secondary_ip |
-| ----- | ------------------------- | ------------------ | -------------------- | ----------------- | -------------- | ------------------------- | ------------------- | --------------------- |
-| 1     | Primary                   | peer.ip            | other.ip             | Passive secondary | true           | 1                         | peer.ip             | other.ip              |
-| 2     | Secondary                 | peer.ip            | other.ip             | Active secondary  | true           | 2                         | peer.ip             | other.ip              |
-| 3     | Primary                   | other.ip           | peer.ip              | Primary           | true           | 1                         | hsa.ip              | peer.ip               |
-| 4     | Primary                   | peer.ip            | ""                   | Retired           | true           | ?                         | ?                   | ?                     |
-| 5     | Primary                   | peer.ip            | ""                   | Spare             | false          | ?                         | ?                   | ?                     |
-
-
-During the Pave Repave processes it is necessary to wait for the NMS system to achieve a target state before proceeding with the next API call.
-One node is a peer in the cluster, the other could be its passive secondary (state 1), its active secondary (state 2), its primary (state 3), retired (state 4) or spare (state 5).   
-State is determined by calling the gRPC endpoint GET api.v3.peers on both nodes.  
-
-## Manual Procedure Pave
-
-The peer, node A. will be replaced by its secondary, node B, and retired. 
-
-Set environment variables:
-- $TOKEN_CLUSTER Bearer token for authentication
-- $IP_A IP address of the peer node A (in dot format)
-- $PORT_A Port number for peer node A
-
-#### Get peer information
-
-Get the IP and port number of node B and the peer ID.
+In this example, the `state` command shows the Peer, its HSA and a Spare node.  The Peer is the active primary.  The HSA is the passive secondary.
 
 ```bash
-uv run peer_info --token_peer $TOKEN_CLUSTER --ip $IP_A --port $PORT_A
+uv run cluster_client state3 \
+  --ip_peer 192.168.122.45\
+  --port_pee 8443 \
+  --ip_hsa 192.168.122.22 \
+  --port_hsa 8444 \
+  --ip_spare 192.168.122.217 \
+  --port_spare 8445
 ```
 
-Set environment variables:
+| Field              | Peer                 | HSA                  | Spare                |
+|--------------------|----------------------|----------------------|----------------------|
+| ip                 | 192.168.122.45       | 192.168.122.22       | 192.168.122.217      |
+| port               | 8443                 | 8444                 | 8445                 |
+| active_appliance   | Primary              | Primary              | N/A                  |
+| primary_ip         | 192.168.122.45       | 192.168.122.45       | N/A                  |
+| secondary_ip       | 192.168.122.22       | 192.168.122.22       | N/A                  |
+| id                 | 1                    | 1                    | N/A                  |
+| status             | active primary       | passive secondary    | spare                |
 
-- $IP_B IP address of the HSA node B (in dot format)
-- $PORT_B Port number for HSA node B
-- $ID id of the peer/HSA pair A,B
-- 
-#### Confirm state
-
-Confirm initial state for pave operation.
 
 ```bash
-uv run get_state --token_peer $TOKEN_CLUSTER --ip_peer $IP_A --port_peer $PORT_A --token_other $TOKEN_CLUSTER --ip_other $IP_B --port_other $PORT_B
+uv run cluster_client repave \
+  --ip_peer 192.168.122.45\
+  --port_pee 8443 \
+  --ip_hsa 192.168.122.22 \
+  --port_hsa 8444 \
+  --ip_spare 192.168.122.217 \
+  --port_spare 8445
 ```
 
-Confirm that the returned state is 1.
+| Field              | Peer                 | HSA                  | Spare                |
+|--------------------|----------------------|----------------------|----------------------|
+| ip                 | 192.168.122.45       | 192.168.122.22       | 192.168.122.217      |
+| port               | 8443                 | 8444                 | 8445                 |
+| active_appliance   | N/A                  | Primary              | N/A                  |
+| primary_ip         | N/A                  | 192.168.122.22       | N/A                  |
+| secondary_ip       | N/A                  |                      | N/A                  |
+| id                 | N/A                  | 1                    | N/A                  |
+| status             | retired              | active primary       | spare                |
 
-#### Fail over
+The `repave` command will cause the HSA to become the active primary.  The Spare will be the passive secondary.  The peer will be retired to become spare.  The replication of data to the spare node may take some time.  When it is complete the status shall be.
 
-Initiate fail over on node A.
 
 ```bash
-uv run fail_over --token_peer $TOKEN_CLUSTER --ip_peer $IP_A --port_peer $PORT_A
+uv run cluster_client state3 \
+  --ip_peer 192.168.122.45\
+  --port_pee 8443 \
+  --ip_hsa 192.168.122.22 \
+  --port_hsa 8444 \
+  --ip_spare 192.168.122.217 \
+  --port_spare 8445
 ```
 
-Wait for 30 seconds before continuing.
+| Field              | Peer                 | HSA                  | Spare                |
+|--------------------|----------------------|----------------------|----------------------|
+| ip                 | 192.168.122.45       | 192.168.122.22       | 192.168.122.217      |
+| port               | 8443                 | 8444                 | 8445                 |
+| active_appliance   | N/A                  | Primary              | Primary              |
+| primary_ip         | N/A                  | 192.168.122.217      | 192.168.122.217      |
+| secondary_ip       | N/A                  | 192.168.122.22       | 192.168.122.22       |
+| id                 | N/A                  | 1                    | 1                    |
+| status             | retired              | passive secondary    | active primary.      |
+
+
+When it is complete the `repaveswitch` command can be used to make the spare into the new active primary.  The HSA will once again be the passive secondary.
+
+
+*state diagram*
+
+It is important to note that the parameters of the `repave` and `repaveswitch` commands reflect the state of the peer, hsa and spare **at the time the `repave` command starts**.  The commands are restartable.  They must be restarted using these initial parameter values.  In this example the `repaveswitch` `--ip_spare` parameter value shall be `192.168.122.217` even though that node is not a spare at the time the command is issued.
+
+
+## Client API 
+
+### Basic API calls
+
+These basic commands request authentication tokens and then issue single API calls.  To show details of the `peer_info` command, enter `uv run cluster_client peer_info --help`. 
+
+| Command                  | API call<br>api/v3/                      | Description                                            |
+| ------------------------ | ---------------------------------------- | ------------------------------------------------------ |
+| peer_info                | peers                                    | Query peer information                                 |
+| get_token                | users/signin                             | Retrieve authentication token                          |
+| get_integration_token    | cluster-orchestrator/integration-token   | Retrieve integration token                             |
+| become_hsa               | cluster-orchestrator/become-hsa          | Make a spare node become an HSA                        |
+| leave_cluster_hsa        | cluster-orchestrator/leave-cluster       | HSA node leave the cluster                             |
+| join_cluster             | cluster-orchestrator/join-cluster        | Add a node to an existing cluster                      |
+| leave_cluster            | cluster-orchestrator/leave-cluster       | Remove a node from the cluster                         |
+| fail_over                | cluster-manager/fail-over                | Perform fail-over operation                            |
+| switch_primary_secondary | cluster-manager/switch-primary-secondary | Switch primary and secondary appliance roles on a peer |
+
+### Composite API calls
+
+These composite commands request authentication tokens, verify prerequisites and then issue multiple API calls. 
+
+| Command      | Description                                                                |
+| ------------ | -------------------------------------------------------------------------- |
+| add_peer     | Add a spare node to an existing cluster                                    |
+| add_new_peer | Create a new cluster from two spare nodes.  Results in a two peer cluster. |
+| remove_peer  | Remove a peer from the cluster                                             |
+| add_hsa      | Add a spare node to a cluster as a HSA.                                    |
+| add_new_hsa  | Create a new cluster from two spare nodes.  Results in a peer hsa pair.    |
+| remove_hsa   | Remove an HSA from a cluster                                               |
+| state1       | Determine the current state of a single node.                              |
+| state2       | Determine the current state of the peer/HSA pair.                          |
+| state3       | Determine the current state of the peer/HSA/spare tripple.                 |
+| repave       | Perform the Repave Procedure given a peer, hsa and spare.                  |
+| switch       | Perform the Switch Procedure to switch Peer and HSA.                       |
+| repaveswitch | Perform the Repave and Switch Procedures given a peer, hsa and spare.      |
+
+### Configuration options
+
+Configuration defaults can be overridden by command line parameters or by environment variables prefixed by `CLUSTER_CLIENT_`.  For example, the optional `--http_timeout_value` parameter overrides the CLUSTER_CLIENT_HTTP_TIMEOUT_VALUE environment variable which overrides the default.  Run `uv run cluster_client show_config` to show the default configuration values.
+
+| Option                                                                        | Description                                                           |
+| ----------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `--log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}`                             | Set the logging level.                                                |
+| `--log-file LOG_FILE`                                                         | Log to file instead of console.                                       |
+| `--username USERNAME`                                                         | Username for authentication.                                          |
+| `--password PASSWORD`                                                         | Password for authentication.                                          |
+| `--host HOST`                                                                 | Host used for port forwarding                                         |
+| `--http_502_max_retries HTTP_502_MAX_RETRIES`                                 | Maximum number of retries when a HTTP 502 response is received.       |
+| `--http_502_retry_delay HTTP_502_RETRY_DELAY`                                 | Delay between retries when a HTTP 502 response is received.           |
+| `--http_timeout_value HTTP_TIMEOUT_VALUE`                                     | The timeout value for HTTP requests.                                  |
+| `--wait_state_max_retries WAIT_STATE_MAX_RETRIES`                             | Maximum number of retries when waiting for a state to be reached.     |
+| `--wait_state_initial_delay WAIT_STATE_INITIAL_DELAY`                         | Initial delay before waiting for a state to be reached.               |
+| `--wait_state_retry_delay WAIT_STATE_RETRY_DELAY`                             | Delay between retries when waiting for a state to be reached.         |
+| `--wait_state_settle_delay WAIT_STATE_SETTLE_DELAY`                           | Final delay after waiting for a state to be reached.                  |
+| `--switch_primary_secondary_max_retries SWITCH_PRIMARY_SECONDARY_MAX_RETRIES` | Maximum number of retries when switching primary and secondary nodes. |
+| `--switch_primary_secondary_retry_delay SWITCH_PRIMARY_SECONDARY_RETRY_DELAY` | Delay between retries when switching primary and secondary nodes.     |
+| `--fail_over_max_retries FAIL_OVER_MAX_RETRIES`                               | Maximum number of retries when failing over to the secondary.         |
+| `--fail_over_retry_delay FAIL_OVER_RETRY_DELAY`                               | Delay between retries when failing over to the secondary.             |
+| `--port_forward`                                                              | Enable port forwarding.                                               |
 
-#### Confirm state
 
-Fail over is an asynchronous process.  Wait for state 2.
-
-```bash
-uv run get_state --token_peer $TOKEN_CLUSTER --ip_peer $IP_B --port_peer $PORT_B --token_other $TOKEN_CLUSTER --ip_other $IP_A --port_other $PORT_A
-```
-
-Confirm that the returned state is 2.
-
-#### Switch Primary Secondary
-
-Perform the switch on node B, which is the new primary.
-
-```bash
-uv run switch_primary_secondary --token $TOKEN_CLUSTER --ip_peer $IP_B --port_peer $PORT_B
-```
-
-Wait for 30 seconds before continuing.
-
-#### Confirm state
-
-Swith primary secondary is a synchronous process.  Wait for state 3.
-
-```bash
-uv run get_state --token_peer $TOKEN_CLUSTER --ip_peer $IP_B --port_peer $PORT_B --token_other $TOKEN_CLUSTER --ip_other $IP_A --port_other $PORT_A
-```
-
-Confirm that the returned state is 3.
-
-#### Get an integration token
-
-Get an integration token from node B.
-
-```bash
-uv run get_integration_token --token_peer $TOKEN_CLUSTER --ip_peer $IP_B --port_peer $PORT_B
-```
-
-Set environment variable:
-- $INTEGRATION_TOKEN
-
-#### Leave cluster HSA
-
-Initiate leave cluster HSA on node A.
-
-```bash
-uv run leave_cluster_hsa --token_hsa $TOKEN_CLUSTER --ip_hsa $IP_A --port_hsa $PORT_A
-```
-
-Wait for 30 seconds before continuing.
-
-#### Confirm state
-
-Leave cluster HSA is an asynchronous process.  Wait for state 4.
-
-```bash
-uv run get_state --token_peer $TOKEN_CLUSTER --ip_peer $IP_B --port_peer $PORT_B --token_other $TOKEN_CLUSTER --ip_other $IP_A --port_other $PORT_A
-```
-
-Confirm that the returned state is 4.
-
-The node B is now a peer in the cluster.  The node A has been retired.
-
-## Manual Procedure Repave
-
-The peer, node B, will be replaced by a spare, node C.
-
-Set environment variables:
-- $TOKEN_CLUSTER Bearer token for authentication
-- $IP_B IP address of the peer node B (in dot format)
-- $PORT_B Port number for peer node B
-- $IP_C IP address of the spare node C (in dot format)
-- $PORT_C Port number of the spare node C
-
-#### Get peer information
-
-Get the peer ID.
-
-```bash
-uv run peer_info --token_peer $TOKEN_CLUSTER --ip $IP_B --port $PORT_B
-```
-
-Set environment variable:
-- $ID id of the peer B
-
-#### Confirm state
-
-Confirm initial state for pave operation.
-
-```bash
-uv run get_state --token_peer $TOKEN_CLUSTER --ip_peer $IP_B --port_peer $PORT_B --token_other $TOKEN_CLUSTER --ip_other $IP_C --port_other $PORT_C
-```
-
-Confirm that the returned state is 5.
-
-#### Get an integration token
-
-Get an integration token from node B.
-
-```bash
-uv run get_integration_token --token_peer $TOKEN_CLUSTER --ip_peer $IP_B --port_peer $PORT_B
-```
-
-Set environment variable:
-- $INTEGRATION_TOKEN
-
-#### Become HSA
-
-Initiate become HSA on node C.
-
-```bash
-uv run leave_cluster_hsa --token_hsa $TOKEN_CLUSTER --ip_hsa $IP_C --port_hsa $PORT_C
-```
-
-Wait for 30 seconds before continuing.
-
-#### Confirm state
-
-Become HSA is an asynchronous process.  Wait for state 1.
-
-```bash
-uv run get_state --token_peer $TOKEN_CLUSTER --ip_peer $IP_B --port_peer $PORT_B --token_other $TOKEN_CLUSTER --ip_other $IP_C --port_other $PORT_C
-```
-
-Confirm that the returned state is 1.
-
-#### Fail over
-
-Initiate fail over on node B.
-
-```bash
-uv run fail_over --token_peer $TOKEN_CLUSTER --ip_peer $IP_B --port_peer $PORT_B
-```
-
-Wait for 30 seconds before continuing.
-
-#### Confirm state
-
-Fail over is an asynchronous process.  Wait for state 2.
-
-```bash
-uv run get_state --token_peer $TOKEN_CLUSTER --ip_peer $IP_B --port_peer $PORT_B --token_other $TOKEN_CLUSTER --ip_other $IP_C --port_other $PORT_C
-```
-
-Confirm that the returned state is 2.
-
-#### Switch Primary Secondary
-
-Perform the switch on node C, which is the new primary.
-
-```bash
-uv run switch_primary_secondary --token $TOKEN_CLUSTER --ip_peer $IP_C --port_peer $PORT_C
-```
-
-Wait for 30 seconds before continuing.
-
-#### Confirm state
-
-Switch primary secondary is a synchronous process.  Wait for state 3.
-
-```bash
-uv run get_state --token_peer $TOKEN_CLUSTER --ip_peer $IP_C --port_peer $PORT_C --token_other $TOKEN_CLUSTER --ip_other $IP_B --port_other $PORT_B
-```
-
-Confirm that the returned state is 3.
-
-Node C is now the active primary and node B is its passive secondary (HSA). 
-
-## Automated Procedure Pave
-
-The peer, node A. will be replaced by its secondary, node B, and retired. 
-
-Set environment variables:
-- $TOKEN_CLUSTER Bearer token for authentication
-- $IP_A IP address of the peer node A (in dot format)
-- $PORT_A Port number for peer node A
-
-#### Get peer information
-
-Get the IP and port number of node B and the peer ID.
-
-```bash
-uv run peer_info --token_peer $TOKEN_CLUSTER --ip $IP_A --port $PORT_A
-```
-
-Set environment variable:
-- $IP_B IP address of the HSA node B (in dot format)
-- $PORT_B Port number for HSA node B
-
-#### Pave
-
-```bash
-uv run pave --token_peer $TOKEN_CLUSTER --ip_peer $IP_A --port_peer $PORT_A --ip_hsa $IP_B --port_hsa $PORT_B
-```
-
-The node B is now a peer in the cluster.  The node A has been retired.
-
-## Automated Procedure Repave
-
-The peer, node B, will be replaced by a spare, node C.
-
-Set environment variables:
-- $TOKEN_CLUSTER Bearer token for authentication
-- $IP_B IP address of the peer node B (in dot format)
-- $PORT_B Port number for peer node B
-- $IP_C IP address of the spare node C (in dot format)
-- $PORT_C Port number of the spare node C
-
-#### Repave
-
-```bash
-uv run pave --token_peer $TOKEN_CLUSTER --ip_peer $IP_B --port_peer $PORT_B --ip_hsa $IP_C --port_hsa $PORT_C
-```
-
-Node C is now the active primary and node B is its passive secondary (HSA). 
-
-## Client applications
-
-### peer_info
-
-```bash
-Calls the gRPC endpoint api.v3.peers on the node.
-
-options:
-  -h, --help            show this help message and exit
-  --log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}
-                        Set the logging level
-  --log-file LOG_FILE   Log to file instead of console
-  --token TOKEN         Bearer token for authentication
-  --ip IP               IP address of the node (in dot format)
-  --port PORT           Port number of the node
-```
-
-### become_hsa
-
-```bash
-Calls the gRPC endpoint api.v3.cluster-orchestrator.become-hsa on a spare node.
-
-options:
-  -h, --help            show this help message and exit
-  --log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}
-                        Set the logging level
-  --log-file LOG_FILE   Log to file instead of console
-  --token_spare TOKEN_SPARE
-                        Bearer token for authentication on spare node
-  --ip_spare IP_SPARE   IP address of the spare node (dot format)
-  --port_spare PORT_SPARE
-                        Port number of the spare node
-  --ip_peer IP_PEER     Primary/Peer IP address in the cluster (dot format)
-  --integration_token INTEGRATION_TOKEN
-                        Integration token
-```
-
-### fail_over
-
-```bash
-Calls the gRPC endpoint api.v3.cluster-manager.fail-over on a peer node.
-
-options:
-  -h, --help            show this help message and exit
-  --log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}
-                        Set the logging level
-  --log-file LOG_FILE   Log to file instead of console
-  --token_peer TOKEN_PEER
-                        Bearer token for authentication on peer
-  --ip_peer IP_PEER     IP address of the peer node to fail-over
-  --port_peer PORT_PEER
-                        Port number of the peer node
-```
-
-### get_integration_token
-
-```bash
-Calls the gRPC endpoint api.v3.cluster-orchestrator.integration-token on a node.
-
-options:
-  -h, --help            show this help message and exit
-  --log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}
-                        Set the logging level
-  --log-file LOG_FILE   Log to file instead of console
-  --token TOKEN         Bearer token for authentication
-  --ip_peer IP_PEER     IP address of peer (dot format)
-  --port_peer PORT_PEER
-                        Port number for peer
-```
-
-### get_state 
-
-```bash
-Calls the gRPC endpoint api.v3.peers on the peer node and another node.
-
-options:
-  -h, --help            show this help message and exit
-  --log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}
-                        Set the logging level
-  --log-file LOG_FILE   Log to file instead of console
-  --token_peer TOKEN_PEER
-                        Bearer token for peer authentication
-  --ip_peer IP_PEER     IP address of the peer node
-  --port_peer PORT_PEER
-                        Port number for peer node
-  --token_other TOKEN_OTHER
-                        Bearer token for Other authentication
-  --ip_other IP_OTHER   IP address of the Other node
-  --port_other PORT_OTHER
-                        Port number for Other node
-```
-
-### leave_cluster_hsa
-
-```bash
-Calls the gRPC endpoint api.v3.cluster-orchestrator.leave-cluster-hsa on a HSA node.
-
-options:
-  -h, --help            show this help message and exit
-  --log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}
-                        Set the logging level
-  --log-file LOG_FILE   Log to file instead of console
-  --token_hsa TOKEN_HSA
-                        Bearer token for authentication on HSA
-  --ip_hsa IP_HSA       IP address of the HSA (dot format)
-  --port_hsa PORT_HSA   Port number of the HSA
-  --integration_token INTEGRATION_TOKEN
-                        Integration token
-```
-
-### switch_primary_secondary
-
-```bash
-Calls the gRPC endpoint api.v3.cluster-manager.switch-primary-secondary on a peer node.
-
-options:
-  -h, --help            show this help message and exit
-  --log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}
-                        Set the logging level
-  --log-file LOG_FILE   Log to file instead of console
-  --token TOKEN         Bearer token for authentication
-  --ip_peer IP_PEER     IP address of the peer (dot format)
-  --port_peer PORT_PEER
-                        Port number of the peer
-  --id ID               ID of the peer in the peers table
-```
-
-### pave
-
-```bash
-The Pave Procedure replaces a peer in a NMS cluster
-
-options:
-  -h, --help            show this help message and exit
-  --log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}
-                        Set the logging level
-  --log-file LOG_FILE   Log to file instead of console
-  --ip_peer IP_PEER     IP address of the peer node (dot format)
-  --token_peer TOKEN_PEER
-                        Bearer token for peer authentication
-  --port_peer PORT_PEER
-                        Port number for peer node
-  --ip_hsa IP_HSA       IP address of the HSA node (dot format)
-  --port_hsa PORT_HSA   Port number for HSA node
-```
-
-### repave
-
-```bash
-The Repave Procedure ensures high availability for a peer in a NMS cluster.
-
-options:
-  -h, --help            show this help message and exit
-  --log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}
-                        Set the logging level
-  --log-file LOG_FILE   Log to file instead of console
-  --token_peer TOKEN_PEER
-                        Bearer token for peer authentication
-  --ip_peer IP_PEER     IP address of the peer node (dot format)
-  --port_peer PORT_PEER
-                        Port number for peer node
-  --token_spare TOKEN_SPARE
-                        Bearer token for spare authentication
-  --ip_spare IP_SPARE   IP address of the spare node (dot format)
-  --port_spare PORT_SPARE
-                        Port number for spare node
-```

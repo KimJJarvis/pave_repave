@@ -9,15 +9,15 @@ import sys
 import json
 import logging
 
-from pave_repave.node import Node
-from pave_repave.status import Status
-from pave_repave.make_single_api_request import make_single_api_request
-from pave_repave.utilities import setup_logging
-from pave_repave.get_token import get_token
-from pave_repave.config import config
+from cluster_client.node import Node
+from cluster_client.status import Status
+from cluster_client.make_single_api_request import make_single_api_request
+from cluster_client.utilities import setup_logging
+from cluster_client.get_token import get_token
+from cluster_client.config import config
 
 logger = logging.getLogger(__name__)
-logger.disabled = True  # Completely silences this logger
+#logger.disabled = True  # Completely silences this logger
 
 
 def peer_info(node: Node) -> Status | None:
@@ -30,14 +30,18 @@ def peer_info(node: Node) -> Status | None:
     Returns:
         Status object with peer information, or None if not found
     """
-    logger.debug(f"peer_info called with node: ip={node.ip}, port={node.port}, token={'***' if node.token else None}")
-    
+    logger.debug(
+        f"peer_info called with node: ip={node.ip}, port={node.port}, token={'***' if node.token else None}"
+    )
+
     # Use config.host if port_forward is enabled, otherwise use node.ip
     host = config.host if config.port_forward else node.ip
     base_url = f"https://{host}:{node.port}"
     url = f"{base_url}/api/v3/peers?activeAppliance=ALL&disabled=MATCH_ALL&master=MATCH_ALL"
 
-    logger.debug(f"Querying peers from {base_url}... (port_forward={config.port_forward}, host={host})")
+    logger.debug(
+        f"Querying peers from {base_url}... (port_forward={config.port_forward}, host={host})"
+    )
 
     # Make the API request (GET method)
     response = make_single_api_request(url=url, bearer_token=node.token, method="GET")
@@ -62,11 +66,11 @@ def peer_info(node: Node) -> Status | None:
             if "primaryIp" not in peer:
                 logger.error("Required field 'primaryIp' not present in peer data")
                 return None
-            
+
             if "id" not in peer:
                 logger.error("Required field 'id' not present in peer data")
                 return None
-            
+
             primary_ip = peer.get("primaryIp", "")
             secondary_ip = peer.get("secondaryIp", "")
 
@@ -118,14 +122,14 @@ def main():
     parser.add_argument(
         "--log-file", type=str, default=None, help="Log to file instead of console"
     )
+    parser.add_argument("--username", required=True, help="Username for authentication")
+    parser.add_argument("--password", required=True, help="Password for authentication")
     parser.add_argument(
-        "--username", required=True, help="Username for authentication"
+        "--ip", required=True, help="IP address of the node (in dot format)"
     )
     parser.add_argument(
-        "--password", required=True, help="Password for authentication"
+        "--port", required=True, type=int, help="Port number of the node"
     )
-    parser.add_argument("--ip", required=True, help="IP address of the node (in dot format)")
-    parser.add_argument("--port", required=True, type=int, help="Port number of the node")
 
     args = parser.parse_args()
 

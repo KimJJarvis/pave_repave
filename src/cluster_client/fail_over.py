@@ -10,12 +10,12 @@ import json
 import logging
 import time
 
-from pave_repave.node import Node
-from pave_repave.response import Response
-from pave_repave.make_single_api_request import make_single_api_request
-from pave_repave.utilities import setup_logging
-from pave_repave.get_token import get_token
-from pave_repave.config import config
+from cluster_client.node import Node
+from cluster_client.response import Response
+from cluster_client.make_single_api_request import make_single_api_request
+from cluster_client.utilities import setup_logging
+from cluster_client.get_token import get_token
+from cluster_client.config import config
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,9 @@ def fail_over(node: Node) -> None:
     max_retries = config.fail_over_max_retries
 
     while retry_count < max_retries:
-        api_response = make_single_api_request(url=url, bearer_token=node.token, method="POST", data=data)
+        api_response = make_single_api_request(
+            url=url, bearer_token=node.token, method="POST", data=data
+        )
 
         # Get HTTP status code if present (added by make_single_api_request for error responses)
         http_status = api_response.get("_http_status_code", 200)
@@ -49,7 +51,9 @@ def fail_over(node: Node) -> None:
         error_field = api_response.get("error", "")
 
         # Check for LeaderFollower Job Active - retry after delay
-        if "LeaderFollower Job Active, cannot Fail-Over" in (status_message or error_field):
+        if "LeaderFollower Job Active, cannot Fail-Over" in (
+            status_message or error_field
+        ):
             retry_count += 1
             if retry_count < max_retries:
                 logger.warning(
@@ -58,8 +62,12 @@ def fail_over(node: Node) -> None:
                 time.sleep(config.fail_over_retry_delay)
                 continue
             else:
-                logger.error(f"Max retries ({max_retries}) exceeded while waiting for LeaderFollower Job to complete")
-                raise RuntimeError(f"fail_over failed: Max retries exceeded - LeaderFollower Job still active")
+                logger.error(
+                    f"Max retries ({max_retries}) exceeded while waiting for LeaderFollower Job to complete"
+                )
+                raise RuntimeError(
+                    f"fail_over failed: Max retries exceeded - LeaderFollower Job still active"
+                )
 
         # Check for HTTP 400 error
         if http_status == 400:
@@ -80,7 +88,7 @@ def fail_over(node: Node) -> None:
         )
         logger.error(f"Unexpected fail_over response: {message}")
         raise RuntimeError(f"Unexpected fail_over response: {message}")
-    
+
     # If we exit the loop without returning, we've exceeded max retries
     logger.error(f"Max retries ({max_retries}) exceeded")
     raise RuntimeError(f"fail_over failed: Max retries exceeded")
@@ -100,16 +108,16 @@ def main():
     parser.add_argument(
         "--log-file", type=str, default=None, help="Log to file instead of console"
     )
+    parser.add_argument("--username", required=True, help="Username for authentication")
+    parser.add_argument("--password", required=True, help="Password for authentication")
     parser.add_argument(
-        "--username", required=True, help="Username for authentication"
+        "--ip_peer",
+        required=True,
+        help="IP address of the peer to fail-over (dot format)",
     )
     parser.add_argument(
-        "--password", required=True, help="Password for authentication"
+        "--port_peer", required=True, type=int, help="Port number of the peer"
     )
-    parser.add_argument(
-        "--ip_peer", required=True, help="IP address of the peer to fail-over (dot format)"
-    )
-    parser.add_argument("--port_peer", required=True, type=int, help="Port number of the peer")
 
     args = parser.parse_args()
 
@@ -118,7 +126,9 @@ def main():
 
     try:
         # Get authentication token
-        token = get_token(username=args.username, password=args.password, port=args.port_peer)
+        token = get_token(
+            username=args.username, password=args.password, port=args.port_peer
+        )
 
         # Create Node object
         node = Node(port=args.port_peer, token=token, ip=args.ip_peer)

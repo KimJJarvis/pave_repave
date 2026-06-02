@@ -10,17 +10,17 @@ import sys
 import time
 import logging
 
-from pave_repave.config import config
-from pave_repave.node import Node
-from pave_repave.peer_info import peer_info
-from pave_repave.utilities import (
+from cluster_client.config import config
+from cluster_client.node import Node
+from cluster_client.peer_info import peer_info
+from cluster_client.utilities import (
     validate_ip_address,
     validate_port,
     validate_token_length,
     validate_unique_ips,
     setup_logging,
 )
-from pave_repave.state_info import (
+from cluster_client.state_info import (
     get_state3,
     verify_state3,
     wait_state3,
@@ -28,15 +28,23 @@ from pave_repave.state_info import (
     precondition3,
     postcondition3,
 )
-from pave_repave.fail_over import fail_over
-from pave_repave.switch_primary_secondary import switch_primary_secondary
-from pave_repave.get_integration_token import get_integration_token
-from pave_repave.peer_info import peer_info
-from pave_repave.leave_cluster_hsa import leave_cluster_hsa
-from pave_repave.become_hsa import become_hsa
-from pave_repave.get_token import get_token
-from pave_repave.state_info import state3_table
-from pave_repave.state_info import get_state3, state3_table, get_state2, state2_table, precondition2, postcondition2, wait_valid_state2
+from cluster_client.fail_over import fail_over
+from cluster_client.switch_primary_secondary import switch_primary_secondary
+from cluster_client.get_integration_token import get_integration_token
+from cluster_client.peer_info import peer_info
+from cluster_client.leave_cluster_hsa import leave_cluster_hsa
+from cluster_client.become_hsa import become_hsa
+from cluster_client.get_token import get_token
+from cluster_client.state_info import state3_table
+from cluster_client.state_info import (
+    get_state3,
+    state3_table,
+    get_state2,
+    state2_table,
+    precondition2,
+    postcondition2,
+    wait_valid_state2,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +77,8 @@ def pave_fail_over(peer: Node, hsa: Node, spare: Node) -> None:
     fail_over(node=peer)
     logger.info("✓ fail_over initiated successfully")
     postcondition3(state=3, peer=peer, hsa=hsa, spare=spare)
-    
+
+
 def pave_switch_primary_secondary(peer: Node, hsa: Node, spare: Node) -> None:
     precondition3(state=3, peer=peer, hsa=hsa, spare=spare)
     id = get_id(node=peer)
@@ -77,6 +86,7 @@ def pave_switch_primary_secondary(peer: Node, hsa: Node, spare: Node) -> None:
     switch_primary_secondary(node=peer, id=id)
     logger.info("✓ switch_primary_secondary initiated successfully")
     postcondition3(state=4, peer=peer, hsa=hsa, spare=spare)
+
 
 def pave_leave_cluster_hsa(peer: Node, hsa: Node, spare: Node) -> None:
     precondition3(state=4, peer=peer, hsa=hsa, spare=spare)
@@ -88,6 +98,7 @@ def pave_leave_cluster_hsa(peer: Node, hsa: Node, spare: Node) -> None:
     logger.info("✓ leave_cluster_hsa initiated successfully")
     postcondition3(state=5, peer=peer, hsa=hsa, spare=spare)
 
+
 def repaveswitch_become_hsa(peer: Node, hsa: Node, spare: Node) -> None:
     precondition3(state=5, peer=peer, hsa=hsa, spare=spare)
     logger.info("Getting integration token")
@@ -98,6 +109,7 @@ def repaveswitch_become_hsa(peer: Node, hsa: Node, spare: Node) -> None:
     logger.info("✓ become_hsa initiated successfully")
     postcondition3(state=6, peer=peer, hsa=hsa, spare=spare)
 
+
 def repave_become_hsa(peer: Node, hsa: Node, spare: Node) -> None:
     precondition3(state=5, peer=peer, hsa=hsa, spare=spare)
     logger.info("Getting integration token")
@@ -107,6 +119,7 @@ def repave_become_hsa(peer: Node, hsa: Node, spare: Node) -> None:
     become_hsa(node=spare, ip_peer=hsa.ip, integration_token=integration_token)
     logger.info("✓ become_hsa initiated successfully")
 
+
 def repave_fail_over(peer: Node, hsa: Node, spare: Node) -> None:
     precondition3(state=6, peer=peer, hsa=hsa, spare=spare)
     spare.token = hsa.token
@@ -114,6 +127,7 @@ def repave_fail_over(peer: Node, hsa: Node, spare: Node) -> None:
     fail_over(node=hsa)
     logger.info("✓ fail_over initiated successfully")
     postcondition3(state=7, peer=peer, hsa=hsa, spare=spare)
+
 
 def repave_switch_primary_secondary(peer: Node, hsa: Node, spare: Node) -> None:
     precondition3(state=7, peer=peer, hsa=hsa, spare=spare)
@@ -124,6 +138,7 @@ def repave_switch_primary_secondary(peer: Node, hsa: Node, spare: Node) -> None:
     logger.info("✓ switch_primary_secondary initiated successfully")
     postcondition3(state=8, peer=peer, hsa=hsa, spare=spare)
 
+
 def switch_fail_over(peer: Node, hsa: Node) -> None:
     logger.debug("switch_fail_over called")
     precondition2(state=2, peer=peer, hsa=hsa)
@@ -132,6 +147,7 @@ def switch_fail_over(peer: Node, hsa: Node) -> None:
     logger.info("✓ fail_over initiated successfully")
     postcondition2(state=3, peer=peer, hsa=hsa)
 
+
 def switch_switch_primary_secondary(peer: Node, hsa: Node) -> None:
     precondition2(state=3, peer=peer, hsa=hsa)
     id = get_id(node=peer)
@@ -139,6 +155,7 @@ def switch_switch_primary_secondary(peer: Node, hsa: Node) -> None:
     switch_primary_secondary(node=hsa, id=id)
     logger.info("✓ switch_primary_secondary initiated successfully")
     postcondition2(state=4, peer=peer, hsa=hsa)
+
 
 def repave(peer: Node, hsa: Node, spare: Node) -> None:
     """
@@ -167,7 +184,7 @@ def repave(peer: Node, hsa: Node, spare: Node) -> None:
         repave_become_hsa,
     ]
 
-    for f in funcs[s - 2:] if 2 <= s <= len(funcs) + 1 else []:
+    for f in funcs[s - 2 :] if 2 <= s <= len(funcs) + 1 else []:
         f(peer=peer, hsa=hsa, spare=spare)
 
 
@@ -200,7 +217,7 @@ def repaveswitch(peer: Node, hsa: Node, spare: Node) -> None:
         repave_switch_primary_secondary,
     ]
 
-    for f in funcs[s - 2:] if 2 <= s <= len(funcs) + 1 else []:
+    for f in funcs[s - 2 :] if 2 <= s <= len(funcs) + 1 else []:
         f(peer=peer, hsa=hsa, spare=spare)
 
 
@@ -228,7 +245,7 @@ def switch(peer: Node, hsa: Node) -> None:
         switch_switch_primary_secondary,
     ]
 
-    for f in funcs[s - 2:] if 2 <= s <= len(funcs) + 1 else []:
+    for f in funcs[s - 2 :] if 2 <= s <= len(funcs) + 1 else []:
         f(peer=peer, hsa=hsa)
 
 

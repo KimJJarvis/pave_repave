@@ -7,7 +7,7 @@ from typing import Self
 
 from pydantic import BaseModel, model_validator
 
-from pave_repave.utilities import validate_ip_format
+from cluster_client.utilities import validate_ip_format
 
 
 class Status(BaseModel):
