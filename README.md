@@ -33,6 +33,8 @@ export CLUSTER_CLIENT_PASSWORD="secret"
 
 The Repave Procedure replaces a peer in a NMS cluster with a spare.  
 
+### Inital state
+
 In this example, the `state` command shows the Peer, its HSA and a Spare node.  The Peer is the active primary.  The HSA is the passive secondary.
 
 ```bash
@@ -55,8 +57,9 @@ uv run cluster_client state3 \
 | id                 | 1                    | 1                    | N/A                  |
 | status             | active primary       | passive secondary    | spare                |
 
+The Spare is an nms node that has been "Paved".  Paving is the proceess of installing a virtual machin, installing the nms image and upgraded the NMS software to the same  version as the peers in the cluster.
 
-The `repave` command will cause the HSA to become the active primary.  The Spare will be the passive secondary.  The peer will be retired to become spare.  
+The purpose of the `repave` command is to Repave the Spare.  Repaving is the process of coping the Peer's data to the Spare.  The `repave` command will cause the HSA to become the active primary.  The Spare will become the passive secondary.  The peer will be retired.
 
 
 ```bash
@@ -79,7 +82,7 @@ uv run cluster_client repave \
 | id                 | N/A                  | 1                    | N/A                  |
 | status             | retired              | active primary       | spare                |
 
-The replication of data to the spare node may take some time.  When it is complete the status shall be.
+The replication of data from the HSA to the Spare may take a long time.  When it is complete the status shall be.
 
 ```bash
 uv run cluster_client state3 \
@@ -101,7 +104,7 @@ uv run cluster_client state3 \
 | id                 | N/A                  | 1                    | 1                    |
 | status             | retired              | active primary       | passive secondary    |
 
-When replication is complete the `repaveswitch` command can be used to make the spare into the new active primary.  The HSA will once again be the passive secondary.
+The data has been coped to the Spare, but the Spare is still a passive secondary.  When replication is complete the `repaveswitch` command can be used to make the spare into the new active primary.  When the process is complete, the HSA will once again be the passive secondary.
 
 
 ```bash
@@ -126,7 +129,6 @@ uv run cluster_client repaveswitch \
 
 
 It is important to note that the parameters of the `repave` and `repaveswitch` commands reflect the state of the Peer, HSA and Spare **at the time the `repave` command starts**.  The commands are re-startable.  They must be restarted using these initial parameter values.  In this example, the `repaveswitch` `--ip_spare` parameter value shall be `192.168.122.217`, as it was in the `repave` command, even though that node is not a spare at the time the `repaveswitch` command is issued.
-
 
 ## Client API 
 
