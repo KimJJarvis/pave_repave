@@ -1,5 +1,15 @@
 # Cluster Client
 
+## Installation
+
+Unpack the distribution.
+
+```bash
+tar -xzf cluster-client-0.1.0.tar.gz
+```
+
+Follow instructions in INSTALL.md to install the python package.
+
 ## Using the Cluster Client
 
 ### Port forwarding
@@ -7,12 +17,11 @@
 The cluster client accesses the cluster nodes either directly or via port forwarding.  For example, this peer_info API call will be forwarded via localhost:8443. 
 
 ```bash
-uv run cluster_client peer_info \
+cluster_client peer_info \
   --ip_peer 192.168.122.45\
   --port_pee 8443 \
   --port-forward 
 ```
-
 
 When port forwarding is active, the API requests will be directed to `https://localhost:8443/api/v3/`.  When port forwarding is inactive, API requests will be directed to `https://192.168.122.45:8443/api/v3/`.  Port forwarding is inactive by default.  The default configuration can be overriden by an using an environment variable
 
@@ -38,7 +47,7 @@ The Repave Procedure replaces a peer in a NMS cluster with a spare.
 In this example, the `state` command shows the Peer, its HSA and a Spare node.  The Peer is the active primary.  The HSA is the passive secondary.
 
 ```bash
-uv run cluster_client state3 \
+cluster_client state3 \
   --ip_peer 192.168.122.45\
   --port_pee 8443 \
   --ip_hsa 192.168.122.22 \
@@ -63,7 +72,7 @@ The purpose of the `repave` command is to Repave the Spare.  Repaving is the pro
 
 
 ```bash
-uv run cluster_client repave \
+cluster_client repave \
   --ip_peer 192.168.122.45\
   --port_pee 8443 \
   --ip_hsa 192.168.122.22 \
@@ -85,7 +94,7 @@ uv run cluster_client repave \
 The replication of data from the HSA to the Spare may take a long time.  When it is complete the status shall be.
 
 ```bash
-uv run cluster_client state3 \
+cluster_client state3 \
   --ip_peer 192.168.122.45\
   --port_pee 8443 \
   --ip_hsa 192.168.122.22 \
@@ -108,7 +117,7 @@ The data has been coped to the Spare, but the Spare is still a passive secondary
 
 
 ```bash
-uv run cluster_client repaveswitch \
+cluster_client repaveswitch \
   --ip_peer 192.168.122.45\
   --port_pee 8443 \
   --ip_hsa 192.168.122.22 \
@@ -134,7 +143,7 @@ It is important to note that the parameters of the `repave` and `repaveswitch` c
 
 ### Basic API calls
 
-These basic commands request authentication tokens and then issue single API calls.  To show details of the `peer_info` command, enter `uv run cluster_client peer_info --help`. 
+These basic commands request authentication tokens and then issue single API calls.  To show details of the `peer_info` command, enter `cluster_client peer_info --help`. 
 
 | Command                  | API call<br>api/v3/                      | Description                                            |
 | ------------------------ | ---------------------------------------- | ------------------------------------------------------ |
@@ -169,7 +178,7 @@ These composite commands request authentication tokens, verify prerequisites and
 
 ### Configuration options
 
-Configuration defaults can be overridden by command line parameters or by environment variables prefixed by `CLUSTER_CLIENT_`.  For example, the optional `--http_timeout_value` parameter overrides the CLUSTER_CLIENT_HTTP_TIMEOUT_VALUE environment variable which overrides the default.  Run `uv run cluster_client show_config` to show the default configuration values.
+Configuration defaults can be overridden by command line parameters or by environment variables prefixed by `CLUSTER_CLIENT_`.  For example, the optional `--http_timeout_value` parameter overrides the CLUSTER_CLIENT_HTTP_TIMEOUT_VALUE environment variable which overrides the default.  Run `cluster_client show_config` to show the default configuration values.
 
 | Option                                                                        | Description                                                           |
 | ----------------------------------------------------------------------------- | --------------------------------------------------------------------- |
