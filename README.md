@@ -1,5 +1,7 @@
 # Cluster Client
 
+Cluster Client is a command-line tool for managing NMS (Network Management System) cluster operations through the Cluster Manager and Cluster Orchestrator APIs. It provides commands for querying cluster state, managing peer and HSA (High-availability Secondary Appliance) nodes, and performing critical maintenance operations. The `repave` command orchestrates the replacement of a peer node in a cluster with a spare node by coordinating failover operations, data replication from the HSA to the spare, and role switching to make the spare the new active primary while retiring the old peer—enabling zero-downtime cluster node replacement.
+
 ## Installation
 
 Unpack the distribution.

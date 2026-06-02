@@ -1,7 +1,7 @@
 [project]
 name = "cluster-client"
 version = "0.1.0"
-description = "Client for the NMS Cluster Manager and Cluster Orchestrator APIs"
+description = "Command-line tool for managing NMS cluster operations through the Cluster Manager and Cluster Orchestrator APIs. Provides commands for querying cluster state, managing peer and HSA nodes, and performing critical maintenance operations including the repave command for zero-downtime cluster node replacement."
 requires-python = ">=3.12"
 dependencies = [
     "pydantic>=2.13.4",
