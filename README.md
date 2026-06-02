@@ -68,9 +68,9 @@ cluster_client state3 \
 | id                 | 1                    | 1                    | N/A                  |
 | status             | active primary       | passive secondary    | spare                |
 
-The Spare is an nms node that has been "Paved".  Paving is the proceess of installing a virtual machin, installing the nms image and upgraded the NMS software to the same  version as the peers in the cluster.
+The Spare is an nms node that has been "Paved".  Paving is the process of installing a virtual machine, installing the NMS image and upgraded the NMS software to the same version as the peers in the cluster.
 
-The purpose of the `repave` command is to Repave the Spare.  Repaving is the process of coping the Peer's data to the Spare.  The `repave` command will cause the HSA to become the active primary.  The Spare will become the passive secondary.  The peer will be retired.
+The purpose of the `repave` command is to Repave the Spare.  Repaving is the process of replicating the Peer's data to the Spare.  The `repave` command will cause the HSA to become the active primary.  The Spare will become the passive secondary and replication will start.  The peer will be retired.
 
 
 ```bash
@@ -93,7 +93,7 @@ cluster_client repave \
 | id                 | N/A                  | 1                    | N/A                  |
 | status             | retired              | active primary       | spare                |
 
-The replication of data from the HSA to the Spare may take a long time.  When it is complete the status shall be.
+The replication of data from the HSA to the Spare may take a long time.  When it is complete the status shall be:
 
 ```bash
 cluster_client state3 \
@@ -115,7 +115,7 @@ cluster_client state3 \
 | id                 | N/A                  | 1                    | 1                    |
 | status             | retired              | active primary       | passive secondary    |
 
-The data has been coped to the Spare, but the Spare is still a passive secondary.  When replication is complete the `repaveswitch` command can be used to make the spare into the new active primary.  When the process is complete, the HSA will once again be the passive secondary.
+The data has been coped to the Spare, but the Spare is still a passive secondary.  When replication is complete the `repaveswitch` command can be used to make the Spare into the new active primary.  When the process is complete, the HSA will once again be the passive secondary.
 
 
 ```bash
@@ -141,11 +141,13 @@ cluster_client repaveswitch \
 
 It is important to note that the parameters of the `repave` and `repaveswitch` commands reflect the state of the Peer, HSA and Spare **at the time the `repave` command starts**.  The commands are re-startable.  They must be restarted using these initial parameter values.  In this example, the `repaveswitch` `--ip_spare` parameter value shall be `192.168.122.217`, as it was in the `repave` command, even though that node is not a spare at the time the `repaveswitch` command is issued.
 
-## Client API 
+## Client commands
+
+The Cluster Client provides additional commands to configure the NMS cluster via the API.
 
 ### Basic API calls
 
-These basic commands request authentication tokens and then issue single API calls.  To show details of the `peer_info` command, enter `cluster_client peer_info --help`. 
+The basic commands request authentication tokens and then issue single API calls.  To show the required parameters of the `peer_info` command, enter `cluster_client peer_info --help`. 
 
 | Command                  | API call<br>api/v3/                      | Description                                            |
 | ------------------------ | ---------------------------------------- | ------------------------------------------------------ |
