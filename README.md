@@ -56,6 +56,9 @@ uv run cluster_client state3 \
 | status             | active primary       | passive secondary    | spare                |
 
 
+The `repave` command will cause the HSA to become the active primary.  The Spare will be the passive secondary.  The peer will be retired to become spare.  
+
+
 ```bash
 uv run cluster_client repave \
   --ip_peer 192.168.122.45\
@@ -76,7 +79,7 @@ uv run cluster_client repave \
 | id                 | N/A                  | 1                    | N/A                  |
 | status             | retired              | active primary       | spare                |
 
-The `repave` command will cause the HSA to become the active primary.  The Spare will be the passive secondary.  The peer will be retired to become spare.  The replication of data to the spare node may take some time.  When it is complete the status shall be.
+The replication of data to the spare node may take some time.  When it is complete the status shall be.
 
 ```bash
 uv run cluster_client state3 \
