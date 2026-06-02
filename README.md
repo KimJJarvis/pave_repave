@@ -78,9 +78,31 @@ uv run cluster_client repave \
 
 The `repave` command will cause the HSA to become the active primary.  The Spare will be the passive secondary.  The peer will be retired to become spare.  The replication of data to the spare node may take some time.  When it is complete the status shall be.
 
-
 ```bash
 uv run cluster_client state3 \
+  --ip_peer 192.168.122.45\
+  --port_pee 8443 \
+  --ip_hsa 192.168.122.22 \
+  --port_hsa 8444 \
+  --ip_spare 192.168.122.217 \
+  --port_spare 8445
+```
+
+| Field              | Peer                 | HSA                  | Spare                |
+|--------------------|----------------------|----------------------|----------------------|
+| ip                 | 192.168.122.45       | 192.168.122.22       | 192.168.122.217      |
+| port               | 8443                 | 8444                 | 8445                 |
+| active_appliance   | N/A                  | Primary              | Primary              |
+| primary_ip         | N/A                  | 192.168.122.22       | 192.168.122.22       |
+| secondary_ip       | N/A                  | 192.168.122.217      | 192.168.122.217      |
+| id                 | N/A                  | 1                    | 1                    |
+| status             | retired              | active primary       | passive secondary    |
+
+When replication is complete the `repaveswitch` command can be used to make the spare into the new active primary.  The HSA will once again be the passive secondary.
+
+
+```bash
+uv run cluster_client repaveswitch \
   --ip_peer 192.168.122.45\
   --port_pee 8443 \
   --ip_hsa 192.168.122.22 \
@@ -100,12 +122,7 @@ uv run cluster_client state3 \
 | status             | retired              | passive secondary    | active primary.      |
 
 
-When it is complete the `repaveswitch` command can be used to make the spare into the new active primary.  The HSA will once again be the passive secondary.
-
-
-*state diagram*
-
-It is important to note that the parameters of the `repave` and `repaveswitch` commands reflect the state of the peer, hsa and spare **at the time the `repave` command starts**.  The commands are restartable.  They must be restarted using these initial parameter values.  In this example the `repaveswitch` `--ip_spare` parameter value shall be `192.168.122.217` even though that node is not a spare at the time the command is issued.
+It is important to note that the parameters of the `repave` and `repaveswitch` commands reflect the state of the Peer, HSA and Spare **at the time the `repave` command starts**.  The commands are re-startable.  They must be restarted using these initial parameter values.  In this example, the `repaveswitch` `--ip_spare` parameter value shall be `192.168.122.217`, as it was in the `repave` command, even though that node is not a spare at the time the `repaveswitch` command is issued.
 
 
 ## Client API 
