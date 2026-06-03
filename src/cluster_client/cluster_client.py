@@ -22,7 +22,7 @@ from cluster_client.leave_cluster_hsa import leave_cluster_hsa
 from cluster_client.join_cluster import join_cluster
 from cluster_client.leave_cluster import leave_cluster
 from cluster_client.remove_peer import remove_peer
-from cluster_client.add_hsa import add_hsa, add_new_hsa
+from cluster_client.add_hsa import add_hsa
 from cluster_client.remove_hsa import remove_hsa
 from cluster_client.state_info import (
     get_state3,
@@ -36,9 +36,12 @@ from cluster_client.state_info import (
     precondition1,
     postcondition1,
 )
+from cluster_client.triple_state import get_triple_state, triple_state_table, precondition_triple, postcondition_triple
+from cluster_client.double_state import get_double_state, double_state_table, precondition_double, postcondition_double
+from cluster_client.single_state import get_single_state, single_state_table, precondition_single, postcondition_single
 from cluster_client.paverepave import repaveswitch, repave, switch
 from cluster_client.config import config
-from cluster_client.add_peer import add_peer, add_new_peer
+from cluster_client.add_peer import add_peer
 from cluster_client.config_info import show_default_config
 
 
@@ -294,15 +297,15 @@ def main():
         help="Add a spare node to an existing cluster",
     )
     add_peer_parser.add_argument(
-        "--ip_cluster",
+        "--ip_peer",
         required=True,
-        help="IP address of the cluster node (dot format)",
+        help="IP address of the peer node (dot format)",
     )
     add_peer_parser.add_argument(
-        "--port_cluster",
+        "--port_peer",
         type=int,
         required=True,
-        help="Port number of the cluster node",
+        help="Port number of the peer node",
     )
     add_peer_parser.add_argument(
         "--ip_spare",
@@ -316,38 +319,6 @@ def main():
         help="Port number of the spare node to add to the cluster",
     )
     add_peer_parser.add_argument(
-        "--name", required=True, help="Name of the spare node to add to the cluster"
-    )
-
-    # add_new_peer subcommand
-    add_new_peer_parser = subparsers.add_parser(
-        "add_new_peer",
-        parents=[parent_parser],
-        help="Add a new peer node to an existing cluster (with validation)",
-    )
-    add_new_peer_parser.add_argument(
-        "--ip_cluster",
-        required=True,
-        help="IP address of the cluster node (dot format)",
-    )
-    add_new_peer_parser.add_argument(
-        "--port_cluster",
-        type=int,
-        required=True,
-        help="Port number of the cluster node",
-    )
-    add_new_peer_parser.add_argument(
-        "--ip_spare",
-        required=True,
-        help="IP address of the spare node to add to the cluster (dot format)",
-    )
-    add_new_peer_parser.add_argument(
-        "--port_spare",
-        type=int,
-        required=True,
-        help="Port number of the spare node to add to the cluster",
-    )
-    add_new_peer_parser.add_argument(
         "--name", required=True, help="Name of the spare node to add to the cluster"
     )
 
@@ -429,25 +400,6 @@ def main():
         "--port_spare", type=int, required=True, help="Port number of the spare node"
     )
 
-    # add_new_hsa subcommand
-    add_new_hsa_parser = subparsers.add_parser(
-        "add_new_hsa",
-        parents=[parent_parser],
-        help="Add an HSA to create a new cluster",
-    )
-    add_new_hsa_parser.add_argument(
-        "--ip_peer", required=True, help="IP address of the peer HSA node (dot format)"
-    )
-    add_new_hsa_parser.add_argument(
-        "--port_peer", type=int, required=True, help="Port number of the peer HSA node"
-    )
-    add_new_hsa_parser.add_argument(
-        "--ip_spare", required=True, help="IP address of the spare node (dot format)"
-    )
-    add_new_hsa_parser.add_argument(
-        "--port_spare", type=int, required=True, help="Port number of the spare node"
-    )
-
     # remove_hsa subcommand
     remove_hsa_parser = subparsers.add_parser(
         "remove_hsa", parents=[parent_parser], help="Remove an HSA from a cluster"
@@ -483,6 +435,19 @@ def main():
         "--port", type=int, required=True, help="Port number for node"
     )
 
+    # single_state subcommand
+    single_state_parser = subparsers.add_parser(
+        "single_state",
+        parents=[parent_parser],
+        help="Determine the current state of a single node",
+    )
+    single_state_parser.add_argument(
+        "--ip", required=True, help="IP address of the node (dot format)"
+    )
+    single_state_parser.add_argument(
+        "--port", type=int, required=True, help="Port number for node"
+    )
+
     # state2 subcommand
     state2_parser = subparsers.add_parser(
         "state2",
@@ -499,6 +464,25 @@ def main():
         "--ip_hsa", required=True, help="IP address of the HSA node (dot format)"
     )
     state2_parser.add_argument(
+        "--port_hsa", type=int, required=True, help="Port number for HSA node"
+    )
+
+    # double_state subcommand
+    double_state_parser = subparsers.add_parser(
+        "double_state",
+        parents=[parent_parser],
+        help="Determine the current state of the peer/HSA cluster (double state)",
+    )
+    double_state_parser.add_argument(
+        "--ip_peer", required=True, help="IP address of the peer node (dot format)"
+    )
+    double_state_parser.add_argument(
+        "--port_peer", type=int, required=True, help="Port number for peer node"
+    )
+    double_state_parser.add_argument(
+        "--ip_hsa", required=True, help="IP address of the HSA node (dot format)"
+    )
+    double_state_parser.add_argument(
         "--port_hsa", type=int, required=True, help="Port number for HSA node"
     )
 
@@ -541,6 +525,31 @@ def main():
         "--ip_spare", required=True, help="IP address of the spare node"
     )
     state3_parser.add_argument(
+        "--port_spare", type=int, required=True, help="Port number for spare node"
+    )
+
+    # triple_state subcommand
+    triple_state_parser = subparsers.add_parser(
+        "triple_state",
+        parents=[parent_parser],
+        help="Determine the current repave state of the peer/HSA cluster",
+    )
+    triple_state_parser.add_argument(
+        "--ip_peer", required=True, help="IP address of the peer node (dot format)"
+    )
+    triple_state_parser.add_argument(
+        "--port_peer", type=int, required=True, help="Port number for peer node"
+    )
+    triple_state_parser.add_argument(
+        "--ip_hsa", required=True, help="IP address of the HSA node (dot format)"
+    )
+    triple_state_parser.add_argument(
+        "--port_hsa", type=int, required=True, help="Port number for HSA node"
+    )
+    triple_state_parser.add_argument(
+        "--ip_spare", required=True, help="IP address of the spare node"
+    )
+    triple_state_parser.add_argument(
         "--port_spare", type=int, required=True, help="Port number for spare node"
     )
 
@@ -774,57 +783,25 @@ def main():
             )
 
             # Create spare Node object
-            spare_node = Node(port=args.port_spare, token=spare_token, ip=args.ip_spare)
+            spare = Node(port=args.port_spare, token=spare_token, ip=args.ip_spare)
 
             join_cluster(
-                cluster=spare_node,
-                ip_spare=peer_node.ip,
+                peer=cluster_node,
+                ip_spare=spare.ip,
                 integration_token=args.integration_token,
                 name=args.name,
             )
 
             print("✓ Operation completed successfully!")
 
-        elif args.command == "add_new_peer":
-            # Get authentication token for cluster node
-            cluster_token = get_token(
-                username=username, password=password, port=args.port_cluster
-            )
-
-            # Create cluster Node object
-            cluster_node = Node(
-                port=args.port_cluster, token=cluster_token, ip=args.ip_cluster
-            )
-
-            # Get authentication token for spare node
-            spare_token = get_token(
-                username=username, password=password, port=args.port_spare
-            )
-
-            # Create spare Node object
-            spare_node = Node(port=args.port_spare, token=spare_token, ip=args.ip_spare)
-
-            # Add spare node as new peer to the cluster (with validation)
-            precondition1(state=5, peer=cluster_node)
-            precondition1(state=5, peer=spare_node)
-            add_new_peer(
-                cluster=cluster_node,
-                spare=spare_node,
-                name=args.name,
-            )
-            postcondition1(state=1, peer=spare_node)
-
-            print("✓ Operation completed successfully!")
-
         elif args.command == "add_peer":
             # Get authentication token for cluster node
-            cluster_token = get_token(
-                username=username, password=password, port=args.port_cluster
+            peer_token = get_token(
+                username=username, password=password, port=args.port_peer
             )
-
             # Create cluster Node object
-            cluster_node = Node(
-                port=args.port_cluster, token=cluster_token, ip=args.ip_cluster
+            peer = Node(
+                port=args.port_peer, token=peer_token, ip=args.ip_peer
             )
             # Get authentication token for spare node
             spare_token = get_token(
@@ -832,17 +809,17 @@ def main():
             )
 
             # Create spare Node object
-            spare_node = Node(port=args.port_spare, token=spare_token, ip=args.ip_spare)
+            spare = Node(port=args.port_spare, token=spare_token, ip=args.ip_spare)
 
             # Add spare node as peer to the cluster
-            precondition1(state=1, peer=cluster_node)
-            precondition1(state=5, peer=spare_node)
+            precondition_single(state=1, peer=spare)
             add_peer(
-                cluster=cluster_node,
-                spare=spare_node,
+                peer=peer,
+                spare=spare,
                 name=args.name,
             )
-            postcondition1(state=1, peer=spare_node)
+            spare.token = peer.token
+            postcondition_single(state=2, peer=spare)
 
             print("✓ Operation completed successfully!")
 
@@ -863,12 +840,12 @@ def main():
             )
 
             # Create peer Node object
-            peer_node = Node(port=args.port_peer, token=peer_token, ip=args.ip_peer)
+            peer = Node(port=args.port_peer, token=peer_token, ip=args.ip_peer)
 
             # Call leave_cluster
             leave_cluster(
                 cluster=cluster_node,
-                peer=peer_node,
+                peer=peer,
                 integration_token=args.integration_token,
             )
 
@@ -891,16 +868,14 @@ def main():
             )
 
             # Create peer Node object
-            peer_node = Node(port=args.port_peer, token=peer_token, ip=args.ip_peer)
+            peer = Node(port=args.port_peer, token=peer_token, ip=args.ip_peer)
 
-            # Call remove_peer (which will get integration token internally)
-            precondition1(state=1, peer=peer_node)
-            precondition1(state=1, peer=cluster_node)
+            precondition_single(state=2, peer=peer)
             remove_peer(
                 cluster=cluster_node,
-                peer=peer_node,
+                peer=peer,
             )
-            postcondition1(state=5, peer=peer_node)
+            postcondition_single(state=1, peer=peer)
 
             print("✓ Operation completed successfully!")
 
@@ -928,32 +903,15 @@ def main():
             )
 
             # Create Node objects
-            peer_node = Node(port=args.port_peer, token=peer_token, ip=args.ip_peer)
-            spare_node = Node(port=args.port_spare, token=spare_token, ip=args.ip_spare)
+            peer = Node(port=args.port_peer, token=peer_token, ip=args.ip_peer)
+            spare = Node(port=args.port_spare, token=spare_token, ip=args.ip_spare)
 
-            precondition2(state=1, peer=peer_node, hsa=spare_node)
-            add_hsa(peer=peer_node, spare=spare_node)
-            postcondition2(state=2, peer=peer_node, hsa=spare_node)
-
-            print("✓ Operation completed successfully!")
-
-        elif args.command == "add_new_hsa":
-            # Get authentication token for peer node
-            peer_token = get_token(
-                username=username, password=password, port=args.port_peer
-            )
-
-            # Get authentication token for spare node
-            spare_token = get_token(
-                username=username, password=password, port=args.port_spare
-            )
-
-            # Create Node objects
-            peer_node = Node(port=args.port_peer, token=peer_token, ip=args.ip_peer)
-            spare_node = Node(port=args.port_spare, token=spare_token, ip=args.ip_spare)
-
-            add_new_hsa(peer=peer_node, spare=spare_node)
-            postcondition2(state=2, peer=peer_node, hsa=spare_node)
+            peer_state = get_single_state(peer=peer)
+            if peer_state not in [1,2]:
+                raise RuntimeError(f"Peer node already has a HSA)")
+            precondition_single(state=1, peer=spare)
+            add_hsa(peer=peer, spare=spare)
+            postcondition_double(state=2, peer=peer, hsa=spare)
 
             print("✓ Operation completed successfully!")
 
@@ -969,13 +927,14 @@ def main():
             )
 
             # Create Node objects
-            peer_node = Node(port=args.port_peer, token=peer_token, ip=args.ip_peer)
-            hsa_node = Node(port=args.port_hsa, token=hsa_token, ip=args.ip_hsa)
+            peer = Node(port=args.port_peer, token=peer_token, ip=args.ip_peer)
+            hsa = Node(port=args.port_hsa, token=hsa_token, ip=args.ip_hsa)
 
             # Call remove_hsa
-            postcondition2(state=2, peer=peer_node, hsa=hsa_node)
-            remove_hsa(peer=peer_node, hsa=hsa_node)
-            postcondition2(state=1, peer=peer_node, hsa=hsa_node)
+            postcondition_double(state=2, peer=peer, hsa=hsa)
+            remove_hsa(peer=peer, hsa=hsa)
+            postcondition_single(state=1, peer=hsa)
+            postcondition_single(state=2, peer=peer)
 
             print("✓ Operation completed successfully!")
 
@@ -989,14 +948,37 @@ def main():
             )
 
             # Construct Node objects
-            peer_node = Node(port=args.port_peer, token=token_peer, ip=args.ip_peer)
-            hsa_node = Node(port=args.port_hsa, token=token_hsa, ip=args.ip_hsa)
+            peer = Node(port=args.port_peer, token=token_peer, ip=args.ip_peer)
+            hsa = Node(port=args.port_hsa, token=token_hsa, ip=args.ip_hsa)
 
             # Determine the current state first
-            current_state = get_state2(peer=peer_node, hsa=hsa_node)
+            current_state = get_state2(peer=peer, hsa=hsa)
 
             # Print the state table with state information
-            print(state2_table(peer=peer_node, hsa=hsa_node, state=current_state))
+            print(state2_table(peer=peer, hsa=hsa, state=current_state))
+            print()
+
+            # Print state to console (stdout)
+            print(f"State: {current_state}")
+
+        elif args.command == "double_state":
+            # Get authentication tokens for each node
+            token_peer = get_token(
+                username=username, password=password, port=args.port_peer
+            )
+            token_hsa = get_token(
+                username=username, password=password, port=args.port_hsa
+            )
+
+            # Construct Node objects
+            peer = Node(port=args.port_peer, token=token_peer, ip=args.ip_peer)
+            hsa = Node(port=args.port_hsa, token=token_hsa, ip=args.ip_hsa)
+
+            # Determine the current state first
+            current_state = get_double_state(peer=peer, hsa=hsa)
+
+            # Print the state table
+            print(double_state_table(peer=peer, hsa=hsa))
             print()
 
             # Print state to console (stdout)
@@ -1015,6 +997,19 @@ def main():
             # Print state to console (stdout)
             print(f"State: {current_state}")
 
+        elif args.command == "single_state":
+            token = get_token(username=username, password=password, port=args.port)
+            node = Node(port=args.port, token=token, ip=args.ip)
+            # Determine the current state first
+            current_state = get_single_state(peer=node)
+
+            # Print the state table with state information
+            print(single_state_table(peer=node))
+            print()
+
+            # Print state to console (stdout)
+            print(f"State: {current_state}")
+
         elif args.command == "state3":
             # Get authentication tokens for each node
             token_peer = get_token(
@@ -1028,17 +1023,50 @@ def main():
             )
 
             # Construct Node objects
-            peer_node = Node(port=args.port_peer, token=token_peer, ip=args.ip_peer)
-            hsa_node = Node(port=args.port_hsa, token=token_hsa, ip=args.ip_hsa)
-            spare_node = Node(port=args.port_spare, token=token_spare, ip=args.ip_spare)
+            peer = Node(port=args.port_peer, token=token_peer, ip=args.ip_peer)
+            hsa = Node(port=args.port_hsa, token=token_hsa, ip=args.ip_hsa)
+            spare = Node(port=args.port_spare, token=token_spare, ip=args.ip_spare)
 
             # Determine the current state first
-            current_state = get_state3(peer=peer_node, hsa=hsa_node, spare=spare_node)
+            current_state = get_state3(peer=peer, hsa=hsa, spare=spare)
 
             # Print the state table with state information
             print(
                 state3_table(
-                    peer=peer_node, hsa=hsa_node, spare=spare_node, state=current_state
+                    peer=peer, hsa=hsa, spare=spare, state=current_state
+                )
+            )
+            print()
+
+            # Print state to console (stdout)
+            print(f"State: {current_state}")
+
+        elif args.command == "triple_state":
+            # Get authentication tokens for each node
+            token_peer = get_token(
+                username=username, password=password, port=args.port_peer
+            )
+            token_hsa = get_token(
+                username=username, password=password, port=args.port_hsa
+            )
+            token_spare = get_token(
+                username=username, password=password, port=args.port_spare
+            )
+
+            # Construct Node objects
+            peer = Node(port=args.port_peer, token=token_peer, ip=args.ip_peer)
+            hsa = Node(port=args.port_hsa, token=token_hsa, ip=args.ip_hsa)
+            spare = Node(port=args.port_spare, token=token_spare, ip=args.ip_spare)
+
+            # Determine the current state first
+            current_state = get_triple_state(
+                peer=peer, hsa=hsa, spare=spare
+            )
+
+            # Print the state table with state information
+            print(
+                triple_state_table(
+                    peer=peer, hsa=hsa, spare=spare
                 )
             )
             print()

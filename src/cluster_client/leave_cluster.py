@@ -5,13 +5,14 @@ Script to leave a cluster using NMS API.
 
 import json
 import logging
+import time
 
 from cluster_client.node import Node
 from cluster_client.make_single_api_request import make_single_api_request
 from cluster_client.config import config
 
 logger = logging.getLogger(__name__)
-
+from cluster_client.analyze_jwt_token import analyze_jwt_token
 
 def leave_cluster(cluster: Node, peer: Node, integration_token: str) -> None:
     """
@@ -31,14 +32,14 @@ def leave_cluster(cluster: Node, peer: Node, integration_token: str) -> None:
         f"integration_token provided: {bool(integration_token)}"
     )
 
-    host = config.host if config.port_forward else cluster.ip
-    base_url = f"https://{host}:{cluster.port}"
+    host = config.host if config.port_forward else peer.ip
+    base_url = f"https://{host}:{peer.port}"
     url = f"{base_url}/api/v3/cluster-orchestrator/leave-cluster"
 
     data = {
         "force": True,
         "ip": peer.ip,
-        "integrationToken": integration_token,
+        "token": integration_token,
     }
 
     response = make_single_api_request(
@@ -66,7 +67,7 @@ def leave_cluster(cluster: Node, peer: Node, integration_token: str) -> None:
     # Check for success message
     status_msg = response.get("status", "")
     logger.debug(f"leave_cluster response: {status_msg}")
-    if "successfully initiated" not in status_msg.lower():
+    if "peer successfully removed" not in status_msg.lower():
         logger.error(f"Unexpected response status: {status_msg}")
         raise RuntimeError(
             f"leave_cluster did not return expected success message. Got: {status_msg}"

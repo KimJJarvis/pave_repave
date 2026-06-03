@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 def join_cluster(
-    cluster: Node, ip_spare: str, integration_token: str, name: str
+    peer: Node, spare: Node, integration_token: str, name: str
 ) -> None:
     """
     Call the join-cluster endpoint.
@@ -37,21 +37,22 @@ def join_cluster(
         RuntimeError: If the API returns HTTP 400, other error status, or unexpected response
     """
     # Log parameters
-    logger.debug(f"join-cluster called on {cluster}, ip_peer: {ip_spare}, name: {name}")
+    logger.debug(f"join-cluster called on {peer}, ip_peer: {spare}, name: {name}")
 
-    host = config.host if config.port_forward else cluster.ip
-    base_url = f"https://{host}:{cluster.port}"
+    host = config.host if config.port_forward else spare.ip
+    base_url = f"https://{host}:{spare.port}"
     url = f"{base_url}/api/v3/cluster-orchestrator/join-cluster"
 
     data = {
-        "clusterNodeIp": cluster.ip,
-        "newNodeIp": ip_spare,
+        "clusterNodeIp": peer.ip,
+        "newNodeIp": spare.ip,
         "newNodeName": name,
         "token": integration_token,
     }
+    logger.debug(f"join_cluster data: {json.dumps(data, indent=2)}")
 
     response = make_single_api_request(
-        url=url, bearer_token=cluster.token, method="POST", data=data
+        url=url, bearer_token=spare.token, method="POST", data=data
     )
 
     # Log response object
