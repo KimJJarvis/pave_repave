@@ -5,15 +5,14 @@ Simplified version that only gets and prints the integration token from porta.
 """
 
 import argparse
-import sys
-import json
 import logging
+import sys
 
-from cluster_client.node import Node
-from cluster_client.make_single_api_request import make_single_api_request
-from cluster_client.utilities import setup_logging
-from cluster_client.get_token import get_authentication_token
 from cluster_client.config import config
+from cluster_client.get_authentication_token import get_authentication_token
+from cluster_client.make_single_api_request import make_single_api_request
+from cluster_client.node import Node
+from cluster_client.utilities import setup_logging
 
 logger = logging.getLogger(__name__)
 
@@ -56,9 +55,7 @@ def get_integration_token(node: Node) -> str:
 
     if "token" not in response:
         logger.error(f"'token' field not found in response: {response}")
-        raise RuntimeError(
-            f"get_integration_token: 'token' field not found in response"
-        )
+        raise RuntimeError("get_integration_token: 'token' field not found in response")
 
     token = response["token"]
     logger.info("✓ Integration token retrieved")

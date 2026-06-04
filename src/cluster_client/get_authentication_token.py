@@ -4,17 +4,13 @@ Script to retrieve an authentication token from NMS API using username and passw
 Makes a POST request to /api/v3/users/signin without requiring a bearer token.
 """
 
-import argparse
-import sys
 import json
-import urllib.request
+import logging
+import ssl
 import urllib.error
 import urllib.parse
-import ssl
-import logging
-from typing import Dict, Any
+import urllib.request
 
-from cluster_client.utilities import setup_logging
 from cluster_client.config import config
 
 logger = logging.getLogger(__name__)
@@ -79,11 +75,11 @@ def get_authentication_token(username: str, password: str, ip: str, port: int) -
             logger.debug(f"Response status: {response.status}")
             response_data = response.read().decode("utf-8")
             parsed_response = json.loads(response_data)
-            logger.debug(f"Response received (token hidden for security)")
+            logger.debug("Response received (token hidden for security)")
 
             # Extract the token from the response
             if "token" not in parsed_response:
-                logger.error(f"'token' field not found in response")
+                logger.error("'token' field not found in response")
                 logger.debug(f"Response data: {json.dumps(parsed_response, indent=2)}")
                 raise ValueError("'token' field not found in response")
 
@@ -127,4 +123,3 @@ def get_authentication_token(username: str, password: str, ip: str, port: int) -
         raise RuntimeError(f"Unexpected error: {type(e).__name__}: {e}") from e
 
         raise RuntimeError(f"Unexpected error: {type(e).__name__}: {e}") from e
-

@@ -4,19 +4,15 @@ Script to query peer information from NMS API v3/peers endpoint.
 Equivalent to the get_peer_info.py but using v3/peers instead of cluster-manager/cluster-info.
 """
 
-import argparse
-import sys
-import json
 import logging
 
+from cluster_client.config import config
+from cluster_client.make_single_api_request import make_single_api_request
 from cluster_client.node import Node
 from cluster_client.status import Status
-from cluster_client.make_single_api_request import make_single_api_request
-from cluster_client.utilities import setup_logging
-from cluster_client.config import config
 
 logger = logging.getLogger(__name__)
-#logger.disabled = True  # Completely silences this logger
+# logger.disabled = True  # Completely silences this logger
 
 
 def peer_info(node: Node) -> Status | None:
@@ -105,4 +101,3 @@ def peer_info(node: Node) -> Status | None:
     except KeyError as e:
         logger.error(f"Missing expected field: {e}")
         return None
-

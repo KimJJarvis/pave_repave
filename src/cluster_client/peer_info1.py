@@ -4,28 +4,24 @@ Script to query peer information from NMS API v3/peers endpoint.
 Equivalent to the get_peer_info.py but using v3/peers instead of cluster-manager/cluster-info.
 """
 
-import argparse
-import sys
-import json
 import logging
 
+from cluster_client.config import config
+from cluster_client.make_single_api_request import make_single_api_request
 from cluster_client.node import Node
 from cluster_client.status import Status
-from cluster_client.make_single_api_request import make_single_api_request
-from cluster_client.utilities import setup_logging
-from cluster_client.config import config
 
 logger = logging.getLogger(__name__)
-#logger.disabled = True  # Completely silences this logger
+# logger.disabled = True  # Completely silences this logger
 
 
 def _map_active_appliance(active_appliance_str: str) -> int:
     """
     Map activeAppliance string to numeric value.
-    
+
     Args:
         active_appliance_str: String value ("PRIMARY", "SECONDARY", or other)
-    
+
     Returns:
         Numeric value: 1 for PRIMARY, 2 for SECONDARY, 0 for UNKNOWN
     """
@@ -40,16 +36,16 @@ def _map_active_appliance(active_appliance_str: str) -> int:
 def _create_status_from_peer(peer: dict) -> Status:
     """
     Create a Status object from a peer dictionary.
-    
+
     Args:
         peer: Peer dictionary from API response
-    
+
     Returns:
         Status object with peer information
     """
     active_appliance_str = peer.get("activeAppliance", "UNKNOWN")
     active_appliance = _map_active_appliance(active_appliance_str)
-    
+
     return Status(
         active_appliance=active_appliance,
         primary_ip=peer.get("primaryIp", ""),
@@ -115,11 +111,13 @@ def peer_info1(node: Node) -> Status | None:
             # Check if either primaryIp or secondaryIp matches the target IP
             if primary_ip == target_ip or secondary_ip == target_ip:
                 return _create_status_from_peer(peer)
-        
+
         # If there's only one peer, return it regardless of IP match
         if len(peers) == 1:
             peer = peers[0]
-            logger.info(f"Only one peer exists, returning it: primaryIp={peer.get('primaryIp')}, secondaryIp={peer.get('secondaryIp')}")
+            logger.info(
+                f"Only one peer exists, returning it: primaryIp={peer.get('primaryIp')}, secondaryIp={peer.get('secondaryIp')}"
+            )
             return _create_status_from_peer(peer)
 
         # No matching peer found
@@ -130,4 +128,3 @@ def peer_info1(node: Node) -> Status | None:
     except KeyError as e:
         logger.error(f"Missing expected field: {e}")
         return None
-

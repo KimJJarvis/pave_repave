@@ -3,9 +3,9 @@
 Utility functions for validation and common operations.
 """
 
-import re
-import sys
 import logging
+import re
+from collections.abc import Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -112,27 +112,60 @@ def validate_token_length(token: str, expected_length: int) -> bool:
     return len(token) == expected_length
 
 
+def _find_duplicates(values: Sequence[str | int]) -> list[str]:
+    """Return duplicate values as sorted strings for error reporting."""
+    seen = set()
+    duplicates = set()
+    for value in values:
+        if value in seen:
+            duplicates.add(value)
+        seen.add(value)
+    return sorted(str(value) for value in duplicates)
+
+
 def validate_unique_ips(*ips: str) -> None:
     """
-    Validate that all provided IP addresses are unique.
+    Validate that all provided IP addresses are valid and unique.
 
     Args:
         *ips: Variable number of IP address strings to validate
 
     Raises:
-        ValueError: If any IP addresses are duplicated
+        ValueError: If any IP address is invalid or duplicated
     """
+    invalid_ips = [ip for ip in ips if not validate_ip_address(ip)]
+    if invalid_ips:
+        raise ValueError(
+            f"Invalid IP address(es) found: {', '.join(sorted(invalid_ips))}"
+        )
+
     ip_list = list(ips)
     if len(ip_list) != len(set(ip_list)):
-        # Find duplicates for better error message
-        seen = set()
-        duplicates = set()
-        for ip in ip_list:
-            if ip in seen:
-                duplicates.add(ip)
-            seen.add(ip)
+        duplicates = _find_duplicates(ip_list)
         raise ValueError(
-            f"IP addresses must be unique. Duplicate IP(s) found: {', '.join(sorted(duplicates))}"
+            f"IP addresses must be unique. Duplicate IP(s) found: {', '.join(duplicates)}"
         )
 
 
+def validate_unique_ports(*ports: int) -> None:
+    """
+    Validate that all provided port numbers are valid and unique.
+
+    Args:
+        *ports: Variable number of port numbers to validate
+
+    Raises:
+        ValueError: If any port number is invalid or duplicated
+    """
+    invalid_ports = [str(port) for port in ports if not validate_port(port)]
+    if invalid_ports:
+        raise ValueError(
+            f"Invalid port number(s) found: {', '.join(sorted(invalid_ports, key=int))}"
+        )
+
+    port_list = list(ports)
+    if len(port_list) != len(set(port_list)):
+        duplicates = _find_duplicates(port_list)
+        raise ValueError(
+            f"Port numbers must be unique when port forwarding is enabled. Duplicate port(s) found: {', '.join(duplicates)}"
+        )

@@ -4,12 +4,11 @@ Script to remove a peer from a cluster using NMS API.
 Similar to leave_cluster but automatically retrieves the integration token.
 """
 
-import json
 import logging
 
-from cluster_client.node import Node
 from cluster_client.get_integration_token import get_integration_token
 from cluster_client.leave_cluster import leave_cluster
+from cluster_client.node import Node
 
 logger = logging.getLogger(__name__)
 
@@ -41,5 +40,4 @@ def remove_peer(cluster: Node, peer: Node) -> None:
         integration_token=integration_token,
     )
 
-    logger.info(f"✓ remove_peer completed successfully")
-
+    logger.info("✓ remove_peer completed successfully")

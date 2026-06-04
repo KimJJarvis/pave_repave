@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
 class AppConfig(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="CLUSTER_CLIENT_")
     host: str = "localhost"
@@ -17,6 +18,7 @@ class AppConfig(BaseSettings):
     port_forward: bool = False
     log_level: str = "INFO"
     log_file: str = "cluster_client.log"
+
 
 # Load once at startup
 config = AppConfig()

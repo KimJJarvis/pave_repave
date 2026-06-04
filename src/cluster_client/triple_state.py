@@ -5,25 +5,16 @@ This script performs the same verification as repave.py prior to step 1,
 then determines and prints the current state (0-4).
 """
 
-import argparse
-from math import e
-import sys
-import time
 import logging
+import time
 
 from cluster_client.config import config
 from cluster_client.node import Node
-from cluster_client.peer_info import peer_info
-from cluster_client.utilities import (
-    validate_ip_address,
-    validate_port,
-    validate_token_length,
-    setup_logging,
-)
 from cluster_client.peer_info1 import peer_info1
 
 logger = logging.getLogger(__name__)
 # logger.disabled = True  # Completely silences this logger
+
 
 def get_triple_state(peer: Node, hsa: Node, spare: Node) -> int:
     """
@@ -35,66 +26,151 @@ def get_triple_state(peer: Node, hsa: Node, spare: Node) -> int:
     hsa_status = peer_info1(hsa)
     spare_status = peer_info1(spare)
 
-    LOOPBACK="127.0.0.1"
+    LOOPBACK = "127.0.0.1"
 
     if peer_status is None:
-        logger.debug(f"Unable to get status for Peer")
+        logger.debug("Unable to get status for Peer")
     elif hsa_status is None:
-        logger.debug(f"Unable to get status for HSA")
+        logger.debug("Unable to get status for HSA")
     elif spare_status is None:
-        logger.debug(f"Unable to get status for Spare")
-    elif hsa_status.primary_ip==peer.ip and hsa_status.secondary_ip==hsa.ip and hsa_status.active_appliance==1:
-        logger.debug(f"HSA indicates state 2")
-        if peer_status.primary_ip==peer.ip and peer_status.secondary_ip==hsa.ip and peer_status.active_appliance==1:
+        logger.debug("Unable to get status for Spare")
+    elif (
+        hsa_status.primary_ip == peer.ip
+        and hsa_status.secondary_ip == hsa.ip
+        and hsa_status.active_appliance == 1
+    ):
+        logger.debug("HSA indicates state 2")
+        if (
+            peer_status.primary_ip == peer.ip
+            and peer_status.secondary_ip == hsa.ip
+            and peer_status.active_appliance == 1
+        ):
             logger.debug(f"Peer indicates state 2 {spare_status}")
-            if spare_status.primary_ip==LOOPBACK and spare_status.secondary_ip=="" and spare_status.active_appliance==1:
-                logger.debug(f"Spare indicates state 2")
+            if (
+                spare_status.primary_ip == LOOPBACK
+                and spare_status.secondary_ip == ""
+                and spare_status.active_appliance == 1
+            ):
+                logger.debug("Spare indicates state 2")
                 return 2
-    elif hsa_status.primary_ip==peer.ip and hsa_status.secondary_ip==hsa.ip and hsa_status.active_appliance==2:
-        logger.debug(f"HSA indicates state 3")
-        if peer_status.primary_ip==peer.ip and peer_status.secondary_ip==hsa.ip and peer_status.active_appliance==2:
-            logger.debug(f"Peer indicates state 3")
-            if spare_status.primary_ip==LOOPBACK and spare_status.secondary_ip=="" and spare_status.active_appliance==1:
-                logger.debug(f"Spare indicates state 3")
+    elif (
+        hsa_status.primary_ip == peer.ip
+        and hsa_status.secondary_ip == hsa.ip
+        and hsa_status.active_appliance == 2
+    ):
+        logger.debug("HSA indicates state 3")
+        if (
+            peer_status.primary_ip == peer.ip
+            and peer_status.secondary_ip == hsa.ip
+            and peer_status.active_appliance == 2
+        ):
+            logger.debug("Peer indicates state 3")
+            if (
+                spare_status.primary_ip == LOOPBACK
+                and spare_status.secondary_ip == ""
+                and spare_status.active_appliance == 1
+            ):
+                logger.debug("Spare indicates state 3")
                 return 3
-    elif hsa_status.primary_ip==hsa.ip and hsa_status.secondary_ip==peer.ip and hsa_status.active_appliance==1:
-        logger.debug(f"HSA indicates state 4")
-        if peer_status.primary_ip==hsa.ip and peer_status.secondary_ip==peer.ip and peer_status.active_appliance==1:
-            logger.debug(f"Peer indicates state 4")
-            if spare_status.primary_ip==LOOPBACK and spare_status.secondary_ip=="" and spare_status.active_appliance==1:
-                logger.debug(f"Spare indicates state 4")
+    elif (
+        hsa_status.primary_ip == hsa.ip
+        and hsa_status.secondary_ip == peer.ip
+        and hsa_status.active_appliance == 1
+    ):
+        logger.debug("HSA indicates state 4")
+        if (
+            peer_status.primary_ip == hsa.ip
+            and peer_status.secondary_ip == peer.ip
+            and peer_status.active_appliance == 1
+        ):
+            logger.debug("Peer indicates state 4")
+            if (
+                spare_status.primary_ip == LOOPBACK
+                and spare_status.secondary_ip == ""
+                and spare_status.active_appliance == 1
+            ):
+                logger.debug("Spare indicates state 4")
                 return 4
-    elif hsa_status.primary_ip==hsa.ip and hsa_status.secondary_ip=="" and hsa_status.active_appliance==1:
-        logger.debug(f"HSA indicates state 5")
-        if peer_status.primary_ip==LOOPBACK and peer_status.secondary_ip=="" and peer_status.active_appliance==1:
-            logger.debug(f"Peer indicates state 5")
-            if spare_status.primary_ip==LOOPBACK and spare_status.secondary_ip=="" and spare_status.active_appliance==1:
-                logger.debug(f"Spare indicates state 5")
+    elif (
+        hsa_status.primary_ip == hsa.ip
+        and hsa_status.secondary_ip == ""
+        and hsa_status.active_appliance == 1
+    ):
+        logger.debug("HSA indicates state 5")
+        if (
+            peer_status.primary_ip == LOOPBACK
+            and peer_status.secondary_ip == ""
+            and peer_status.active_appliance == 1
+        ):
+            logger.debug("Peer indicates state 5")
+            if (
+                spare_status.primary_ip == LOOPBACK
+                and spare_status.secondary_ip == ""
+                and spare_status.active_appliance == 1
+            ):
+                logger.debug("Spare indicates state 5")
                 return 5
-    elif hsa_status.primary_ip==hsa.ip and hsa_status.secondary_ip==spare.ip and hsa_status.active_appliance==1:
-        logger.debug(f"HSA indicates state 6")
-        if peer_status.primary_ip==LOOPBACK and peer_status.secondary_ip=="" and peer_status.active_appliance==1:
-            logger.debug(f"Peer indicates state 6")
-            if spare_status.primary_ip==hsa.ip and spare_status.secondary_ip==spare.ip and spare_status.active_appliance==1:
-                logger.debug(f"Spare indicates state 6")
+    elif (
+        hsa_status.primary_ip == hsa.ip
+        and hsa_status.secondary_ip == spare.ip
+        and hsa_status.active_appliance == 1
+    ):
+        logger.debug("HSA indicates state 6")
+        if (
+            peer_status.primary_ip == LOOPBACK
+            and peer_status.secondary_ip == ""
+            and peer_status.active_appliance == 1
+        ):
+            logger.debug("Peer indicates state 6")
+            if (
+                spare_status.primary_ip == hsa.ip
+                and spare_status.secondary_ip == spare.ip
+                and spare_status.active_appliance == 1
+            ):
+                logger.debug("Spare indicates state 6")
                 return 6
-    elif hsa_status.primary_ip==hsa.ip and hsa_status.secondary_ip==spare.ip and hsa_status.active_appliance==2:
-        logger.debug(f"HSA indicates state 7")
-        if peer_status.primary_ip==LOOPBACK and peer_status.secondary_ip=="" and peer_status.active_appliance==1:
-            logger.debug(f"Peer indicates state 7")
-            if spare_status.primary_ip==hsa.ip and spare_status.secondary_ip==spare.ip and spare_status.active_appliance==2:
-                logger.debug(f"Spare indicates state 7")
+    elif (
+        hsa_status.primary_ip == hsa.ip
+        and hsa_status.secondary_ip == spare.ip
+        and hsa_status.active_appliance == 2
+    ):
+        logger.debug("HSA indicates state 7")
+        if (
+            peer_status.primary_ip == LOOPBACK
+            and peer_status.secondary_ip == ""
+            and peer_status.active_appliance == 1
+        ):
+            logger.debug("Peer indicates state 7")
+            if (
+                spare_status.primary_ip == hsa.ip
+                and spare_status.secondary_ip == spare.ip
+                and spare_status.active_appliance == 2
+            ):
+                logger.debug("Spare indicates state 7")
                 return 7
-    elif hsa_status.primary_ip==spare.ip and hsa_status.secondary_ip==hsa.ip and hsa_status.active_appliance==1:
-        logger.debug(f"HSA indicates state 8")
-        if peer_status.primary_ip==LOOPBACK and peer_status.secondary_ip=="" and peer_status.active_appliance==1:
-            logger.debug(f"Peer indicates state 8")
-            if spare_status.primary_ip==spare.ip and spare_status.secondary_ip==hsa.ip and spare_status.active_appliance==1:
-                logger.debug(f"Spare indicates state 8")
+    elif (
+        hsa_status.primary_ip == spare.ip
+        and hsa_status.secondary_ip == hsa.ip
+        and hsa_status.active_appliance == 1
+    ):
+        logger.debug("HSA indicates state 8")
+        if (
+            peer_status.primary_ip == LOOPBACK
+            and peer_status.secondary_ip == ""
+            and peer_status.active_appliance == 1
+        ):
+            logger.debug("Peer indicates state 8")
+            if (
+                spare_status.primary_ip == spare.ip
+                and spare_status.secondary_ip == hsa.ip
+                and spare_status.active_appliance == 1
+            ):
+                logger.debug("Spare indicates state 8")
                 return 8
     else:
         return 0
     return 0
+
 
 def verify_triple_state(state: int, peer: Node, hsa: Node, spare: Node) -> bool:
     """
@@ -106,16 +182,13 @@ def verify_triple_state(state: int, peer: Node, hsa: Node, spare: Node) -> bool:
     current_state = get_triple_state(peer=peer, hsa=hsa, spare=spare)
     return current_state == state
 
+
 def _wait_for_triple_state_condition(
-    peer: Node,
-    hsa: Node,
-    spare: Node,
-    condition_check,
-    condition_description: str
+    peer: Node, hsa: Node, spare: Node, condition_check, condition_description: str
 ) -> int | None:
     """
     Helper function to wait for a state condition to be met.
-    
+
     Args:
         peer: Peer node
         hsa: HSA node
@@ -123,10 +196,10 @@ def _wait_for_triple_state_condition(
         condition_check: Callable that takes current_state and returns (bool, should_return_state)
                         Returns (True, state) if condition met, (False, None) otherwise
         condition_description: Description of the condition being waited for (for logging)
-    
+
     Returns:
         The state when condition is met (if condition_check returns a state)
-        
+
     Raises:
         RuntimeError: If condition is not met after maximum retries
     """
@@ -142,10 +215,10 @@ def _wait_for_triple_state_condition(
 
         # Check current state
         current_state = get_triple_state(peer=peer, hsa=hsa, spare=spare)
-        
+
         # Check if condition is met
         condition_met, return_value = condition_check(current_state)
-        
+
         if condition_met:
             logger.debug(f"✓ {condition_description} reached successfully")
             return return_value
@@ -164,7 +237,7 @@ def _wait_for_triple_state_condition(
             raise RuntimeError(
                 f"wait_state failed: {condition_description} not reached after maximum retries (current state: {current_state})"
             )
-    
+
     time.sleep(config.wait_state_settle_delay)
 
 
@@ -173,17 +246,18 @@ def wait_triple_state(state: int, peer: Node, hsa: Node, spare: Node) -> None:
     Wait for the system to reach the specified state.
     Calls verify_triple_state() repeatedly until the desired state is reached.
     """
+
     def check_state(current_state):
         if current_state == state:
             return (True, None)
         return (False, None)
-    
+
     _wait_for_triple_state_condition(
         peer=peer,
         hsa=hsa,
         spare=spare,
         condition_check=check_state,
-        condition_description=f"State {state}"
+        condition_description=f"State {state}",
     )
 
 
@@ -203,6 +277,7 @@ def wait_valid_triple_state(peer: Node, hsa: Node, spare: Node) -> int:
     Raises:
         RuntimeError: If a valid state is not reached after maximum retries
     """
+
     def check_valid_state(current_state):
         if current_state != 0:
             return (True, current_state)
@@ -214,19 +289,18 @@ def wait_valid_triple_state(peer: Node, hsa: Node, spare: Node) -> int:
             f"Current state is 0 (invalid). Waiting {config.wait_state_retry_delay} seconds before retry..."
         )
         return (False, None)
-    
+
     result = _wait_for_triple_state_condition(
         peer=peer,
         hsa=hsa,
         spare=spare,
         condition_check=check_valid_state,
-        condition_description="valid (non-zero) state"
+        condition_description="valid (non-zero) state",
     )
     # This should never be None since check_valid_state always returns a state when condition is met
     if result is None:
         raise RuntimeError("Unexpected None return from _wait_for_state_condition")
     return result
-
 
 
 def triple_state_table(peer: Node, hsa: Node, spare: Node) -> str:
@@ -262,7 +336,7 @@ def triple_state_table(peer: Node, hsa: Node, spare: Node) -> str:
     # Header row
     header = f"| {'Field':<{col1_width}} | {'Peer':<{col2_width}} | {'HSA':<{col3_width}} | {'Spare':<{col4_width}} |"
     lines.append(header)
-    
+
     # Separator row (markdown table format)
     separator = f"|{'-' * (col1_width + 2)}|{'-' * (col2_width + 2)}|{'-' * (col3_width + 2)}|{'-' * (col4_width + 2)}|"
     lines.append(separator)

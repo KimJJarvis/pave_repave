@@ -5,14 +5,13 @@ Script to leave a cluster using NMS API.
 
 import json
 import logging
-import time
 
-from cluster_client.node import Node
-from cluster_client.make_single_api_request import make_single_api_request
 from cluster_client.config import config
+from cluster_client.make_single_api_request import make_single_api_request
+from cluster_client.node import Node
 
 logger = logging.getLogger(__name__)
-from cluster_client.analyze_jwt_token import analyze_jwt_token
+
 
 def leave_cluster(cluster: Node, peer: Node, integration_token: str) -> None:
     """

@@ -4,16 +4,12 @@ Script to remove an HSA from a cluster using NMS API.
 Retrieves an integration token from the HSA and calls leave-cluster-hsa on the peer node.
 """
 
-import argparse
-import sys
-import json
 import logging
 
-from cluster_client.node import Node
 from cluster_client.get_integration_token import get_integration_token
 from cluster_client.leave_cluster_hsa import leave_cluster_hsa
+from cluster_client.node import Node
 from cluster_client.peer_info import peer_info
-from cluster_client.utilities import setup_logging
 
 logger = logging.getLogger(__name__)
 
@@ -105,4 +101,3 @@ def remove_hsa(peer: Node, hsa: Node) -> None:
     leave_cluster_hsa(node=hsa, integration_token=integration_token)
 
     logger.info("✓ remove_hsa completed successfully")
-

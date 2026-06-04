@@ -4,16 +4,12 @@ Script to leave an HSA cluster using NMS API.
 Retrieves an integration token and calls the leave-cluster-hsa endpoint.
 """
 
-import argparse
-import sys
 import json
 import logging
 
-from cluster_client.node import Node
-from cluster_client.make_single_api_request import make_single_api_request
-from cluster_client.utilities import setup_logging
-from cluster_client.get_token import get_authentication_token
 from cluster_client.config import config
+from cluster_client.make_single_api_request import make_single_api_request
+from cluster_client.node import Node
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +30,7 @@ def leave_cluster_hsa(node: Node, integration_token: str) -> None:
     url = f"{base_url}/api/v3/cluster-orchestrator/leave-cluster-hsa"
 
     # Log parameters
-    logger.info(f"leave_cluster_hsa called with parameters:")
+    logger.info("leave_cluster_hsa called with parameters:")
     logger.info(f"  node.ip: {node.ip}")
     logger.info(f"  node.port: {node.port}")
     logger.info(f"  integration_token: {integration_token[:20]}...")
@@ -62,9 +58,8 @@ def leave_cluster_hsa(node: Node, integration_token: str) -> None:
         )
 
     # Log response
-    logger.info(f"leave_cluster_hsa response:")
+    logger.info("leave_cluster_hsa response:")
     logger.info(json.dumps(response, indent=2))
 
     status_msg = response.get("status", "unknown")
     logger.info(f"✓ leave-cluster-hsa completed: {status_msg}")
-

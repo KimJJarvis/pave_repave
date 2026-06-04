@@ -6,25 +6,20 @@ then determines and prints the current state (0-4).
 """
 
 import argparse
-from math import e
-import sys
-import time
 import logging
+import time
 
 from cluster_client.config import config
+from cluster_client.get_authentication_token import get_authentication_token
 from cluster_client.node import Node
 from cluster_client.peer_info import peer_info
-from cluster_client.get_token import get_authentication_token
 from cluster_client.utilities import (
-    validate_ip_address,
-    validate_port,
-    validate_token_length,
     setup_logging,
 )
-from cluster_client.peer_info import peer_info
 
 logger = logging.getLogger(__name__)
 # logger.disabled = True  # Completely silences this logger
+
 
 def state1_tuple(state: int) -> str:
     if state == 1:
@@ -211,43 +206,43 @@ def get_state1(peer: Node) -> int:
     logger.debug(f"get_state1 {peer}")
     peer_status_on_peer = peer_info(node=peer)
     if peer_status_on_peer is None:
-        logger.debug(f"Peer is not running")
+        logger.debug("Peer is not running")
         loopback_status_on_peer = peer_info(
             Node(port=peer.port, token=peer.token, ip="127.0.0.1")
         )
         if loopback_status_on_peer is not None:
-            logger.debug(f"Peer is spare")
+            logger.debug("Peer is spare")
             return 5
     elif (
         peer_status_on_peer is not None
         and peer_status_on_peer.primary_ip == peer.ip
         and peer_status_on_peer.active_appliance == 1
     ):
-        logger.debug(f"Peer is active primary")
+        logger.debug("Peer is active primary")
         return 1
     elif (
         peer_status_on_peer is not None
         and peer_status_on_peer.secondary_ip == peer.ip
         and peer_status_on_peer.active_appliance == 2
     ):
-        logger.debug(f"Peer is active secondary")
+        logger.debug("Peer is active secondary")
         return 2
     elif (
         peer_status_on_peer is not None
         and peer_status_on_peer.primary_ip == peer.ip
         and peer_status_on_peer.active_appliance == 2
     ):
-        logger.debug(f"Peer is passive primary")
+        logger.debug("Peer is passive primary")
         return 3
     elif (
         peer_status_on_peer is not None
         and peer_status_on_peer.secondary_ip == peer.ip
         and peer_status_on_peer.active_appliance == 1
     ):
-        logger.debug(f"Peer is passive secondary")
+        logger.debug("Peer is passive secondary")
         return 4
     else:
-        logger.debug(f"Invalid state")
+        logger.debug("Invalid state")
     return 0
 
 
@@ -259,31 +254,31 @@ def get_state2(peer: Node, hsa: Node) -> int:
     peer_status_on_peer = peer_info(node=peer)
 
     if peer_status_on_peer is None:
-        logger.debug(f"Peer is not running")
+        logger.debug("Peer is not running")
     elif (
         peer_status_on_peer is not None
         and peer_status_on_peer.primary_ip == peer.ip
         and peer_status_on_peer.secondary_ip == ""
         and peer_status_on_peer.active_appliance == 1
     ):
-        logger.debug(f"Peer is active primary")
+        logger.debug("Peer is active primary")
         hsa_status_on_hsa = peer_info(node=hsa)
         if hsa_status_on_hsa is None:
             loopback_status_on_hsa = peer_info(
                 Node(port=hsa.port, token=hsa.token, ip="127.0.0.1")
             )
             if loopback_status_on_hsa is not None:
-                logger.debug(f"HSA is spare")
+                logger.debug("HSA is spare")
                 return 1
             else:
-                logger.debug(f"HSA not spare")
+                logger.debug("HSA not spare")
     elif (
         peer_status_on_peer is not None
         and peer_status_on_peer.primary_ip == peer.ip
         and peer_status_on_peer.secondary_ip == hsa.ip
         and peer_status_on_peer.active_appliance == 1
     ):
-        logger.debug(f"Peer is active primary")
+        logger.debug("Peer is active primary")
         hsa_status_on_hsa = peer_info(node=hsa)
         if (
             hsa_status_on_hsa is not None
@@ -291,17 +286,17 @@ def get_state2(peer: Node, hsa: Node) -> int:
             and hsa_status_on_hsa.secondary_ip == hsa.ip
             and hsa_status_on_hsa.active_appliance == 1
         ):
-            logger.debug(f"HSA status match")
+            logger.debug("HSA status match")
             return 2
         else:
-            logger.debug(f"HSA status mismatch")
+            logger.debug("HSA status mismatch")
     elif (
         peer_status_on_peer is not None
         and peer_status_on_peer.primary_ip == peer.ip
         and peer_status_on_peer.secondary_ip == hsa.ip
         and peer_status_on_peer.active_appliance == 2
     ):
-        logger.debug(f"Peer is passive primary")
+        logger.debug("Peer is passive primary")
         hsa_status_on_hsa = peer_info(node=hsa)
         if (
             hsa_status_on_hsa is not None
@@ -309,17 +304,17 @@ def get_state2(peer: Node, hsa: Node) -> int:
             and hsa_status_on_hsa.secondary_ip == hsa.ip
             and hsa_status_on_hsa.active_appliance == 2
         ):
-            logger.debug(f"HSA status match")
+            logger.debug("HSA status match")
             return 3
         else:
-            logger.debug(f"HSA status mismatch")
+            logger.debug("HSA status mismatch")
     elif (
         peer_status_on_peer is not None
         and peer_status_on_peer.primary_ip == hsa.ip
         and peer_status_on_peer.secondary_ip == peer.ip
         and peer_status_on_peer.active_appliance == 1
     ):
-        logger.debug(f"Peer is passive secondary")
+        logger.debug("Peer is passive secondary")
         hsa_status_on_hsa = peer_info(node=hsa)
         if (
             hsa_status_on_hsa is not None
@@ -327,12 +322,12 @@ def get_state2(peer: Node, hsa: Node) -> int:
             and hsa_status_on_hsa.secondary_ip == peer.ip
             and hsa_status_on_hsa.active_appliance == 1
         ):
-            logger.debug(f"HSA status match")
+            logger.debug("HSA status match")
             return 4
         else:
-            logger.debug(f"HSA status mismatch")
+            logger.debug("HSA status mismatch")
     else:
-        logger.debug(f"Invalid state")
+        logger.debug("Invalid state")
     return 0
 
 
@@ -517,7 +512,7 @@ def wait_valid_state2(peer: Node, hsa: Node) -> int:
 
     # If we exit the loop without returning, raise an error
     raise RuntimeError(
-        f"wait_valid_state failed: Valid state not reached after maximum retries (current state: 0)"
+        "wait_valid_state failed: Valid state not reached after maximum retries (current state: 0)"
     )
 
 
@@ -591,7 +586,7 @@ def state3_table(peer: Node, hsa: Node, spare: Node, state: int) -> str:
     # Header row
     header = f"| {'Field':<{col1_width}} | {'Peer':<{col2_width}} | {'HSA':<{col3_width}} | {'Spare':<{col4_width}} |"
     lines.append(header)
-    
+
     # Separator row (markdown table format)
     separator = f"|{'-' * (col1_width + 2)}|{'-' * (col2_width + 2)}|{'-' * (col3_width + 2)}|{'-' * (col4_width + 2)}|"
     lines.append(separator)
@@ -653,19 +648,19 @@ def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
         and peer_status_on_peer.secondary_ip == hsa.ip
         and peer_status_on_peer.active_appliance == 1
     ):
-        logger.debug(f"Peer is active primary")
+        logger.debug("Peer is active primary")
         if hsa_status_on_hsa is None:
-            logger.debug(f"HSA is spare")
+            logger.debug("HSA is spare")
             loopback_status_on_hsa = peer_info(
                 Node(port=hsa.port, token=hsa.token, ip="127.0.0.1")
             )
             if loopback_status_on_hsa is not None:
-                logger.debug(f"HSA is spare")
+                logger.debug("HSA is spare")
                 loopback_status_on_spare = peer_info(
                     Node(port=spare.port, token=spare.token, ip="127.0.0.1")
                 )
                 if loopback_status_on_spare is not None:
-                    logger.debug(f"Spare is spare")
+                    logger.debug("Spare is spare")
                     return 1
         elif (
             hsa_status_on_hsa is not None
@@ -673,16 +668,16 @@ def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
             and hsa_status_on_hsa.secondary_ip == hsa.ip
             and hsa_status_on_hsa.active_appliance == 1
         ):
-            logger.debug(f"HSA is passive secondary")
+            logger.debug("HSA is passive secondary")
             loopback_status_on_spare = peer_info(
                 Node(port=spare.port, token=spare.token, ip="127.0.0.1")
             )
             if loopback_status_on_spare is not None:
-                logger.debug(f"Spare is spare")
+                logger.debug("Spare is spare")
                 return 2
-            logger.debug(f"Spare is not spare")
+            logger.debug("Spare is not spare")
         else:
-            logger.debug(f"HSA status does not match")
+            logger.debug("HSA status does not match")
         return 0
     elif (
         peer_status_on_peer is not None
@@ -690,23 +685,23 @@ def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
         and peer_status_on_peer.secondary_ip == hsa.ip
         and peer_status_on_peer.active_appliance == 2
     ):
-        logger.debug(f"Peer is passive primary")
+        logger.debug("Peer is passive primary")
         if (
             hsa_status_on_hsa is not None
             and hsa_status_on_hsa.primary_ip == peer.ip
             and hsa_status_on_hsa.secondary_ip == hsa.ip
             and hsa_status_on_hsa.active_appliance == 2
         ):
-            logger.debug(f"HSA is active secondary")
+            logger.debug("HSA is active secondary")
             loopback_status_on_spare = peer_info(
                 Node(port=spare.port, token=spare.token, ip="127.0.0.1")
             )
             if loopback_status_on_spare is not None:
-                logger.debug(f"Spare is spare")
+                logger.debug("Spare is spare")
                 return 3
-            logger.debug(f"Spare is not spare")
+            logger.debug("Spare is not spare")
         else:
-            logger.debug(f"HSA status does not match")
+            logger.debug("HSA status does not match")
         return 0
     elif (
         peer_status_on_peer is not None
@@ -714,23 +709,23 @@ def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
         and peer_status_on_peer.secondary_ip == peer.ip
         and peer_status_on_peer.active_appliance == 1
     ):
-        logger.debug(f"Peer is passive secondary")
+        logger.debug("Peer is passive secondary")
         if (
             hsa_status_on_hsa is not None
             and hsa_status_on_hsa.primary_ip == hsa.ip
             and hsa_status_on_hsa.secondary_ip == peer.ip
             and hsa_status_on_hsa.active_appliance == 1
         ):
-            logger.debug(f"HSA is active secondary")
+            logger.debug("HSA is active secondary")
             loopback_status_on_spare = peer_info(
                 Node(port=spare.port, token=spare.token, ip="127.0.0.1")
             )
             if loopback_status_on_spare is not None:
-                logger.debug(f"Spare is spare")
+                logger.debug("Spare is spare")
                 return 4
-            logger.debug(f"Spare is not spare")
+            logger.debug("Spare is not spare")
         else:
-            logger.debug(f"HSA status does not match")
+            logger.debug("HSA status does not match")
         return 0
     elif (
         peer_status_on_peer is not None
@@ -738,27 +733,27 @@ def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
         and peer_status_on_peer.secondary_ip == ""
         and peer_status_on_peer.active_appliance == 1
     ):
-        logger.debug(f"Peer has no secondary")
+        logger.debug("Peer has no secondary")
         return 0
     elif peer_status_on_peer is None:
-        logger.debug(f"Peer is not in cluster")
+        logger.debug("Peer is not in cluster")
         loopback_status_on_peer = peer_info(
             Node(port=peer.port, token=peer.token, ip="127.0.0.1")
         )
         if loopback_status_on_peer is not None:
-            logger.debug(f"Peer is spare")
+            logger.debug("Peer is spare")
             if (
                 hsa_status_on_hsa is not None
                 and hsa_status_on_hsa.primary_ip == hsa.ip
                 and hsa_status_on_hsa.secondary_ip == ""
                 and hsa_status_on_hsa.active_appliance == 1
             ):
-                logger.debug(f"HSA is active primary, stand alone")
+                logger.debug("HSA is active primary, stand alone")
                 loopback_status_on_spare = peer_info(
                     Node(port=spare.port, token=spare.token, ip="127.0.0.1")
                 )
                 if loopback_status_on_spare is not None:
-                    logger.debug(f"Spare is spare")
+                    logger.debug("Spare is spare")
                     return 5
             elif (
                 hsa_status_on_hsa is not None
@@ -766,7 +761,7 @@ def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
                 and hsa_status_on_hsa.secondary_ip == spare.ip
                 and hsa_status_on_hsa.active_appliance == 1
             ):
-                logger.debug(f"HSA is active primary, spare is passive secondary")
+                logger.debug("HSA is active primary, spare is passive secondary")
                 spare_status_on_spare = peer_info(
                     Node(port=spare.port, token=hsa.token, ip=spare.ip)
                 )
@@ -776,9 +771,9 @@ def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
                     and spare_status_on_spare.secondary_ip == spare.ip
                     and spare_status_on_spare.active_appliance == 1
                 ):
-                    logger.debug(f"Spare is passive secondary")
+                    logger.debug("Spare is passive secondary")
                     return 6
-                logger.debug(f"Spare status does not match")
+                logger.debug("Spare status does not match")
                 return 0
             elif (
                 hsa_status_on_hsa is not None
@@ -786,7 +781,7 @@ def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
                 and hsa_status_on_hsa.secondary_ip == spare.ip
                 and hsa_status_on_hsa.active_appliance == 2
             ):
-                logger.debug(f"HSA is passive primary, spare is active secondary")
+                logger.debug("HSA is passive primary, spare is active secondary")
                 spare_status_on_spare = peer_info(
                     Node(port=spare.port, token=hsa.token, ip=spare.ip)
                 )
@@ -796,9 +791,9 @@ def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
                     and spare_status_on_spare.secondary_ip == spare.ip
                     and spare_status_on_spare.active_appliance == 2
                 ):
-                    logger.debug(f"Spare is active secondary")
+                    logger.debug("Spare is active secondary")
                     return 7
-                logger.debug(f"Spare status does not match")
+                logger.debug("Spare status does not match")
                 return 0
             elif (
                 hsa_status_on_hsa is not None
@@ -806,7 +801,7 @@ def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
                 and hsa_status_on_hsa.secondary_ip == hsa.ip
                 and hsa_status_on_hsa.active_appliance == 1
             ):
-                logger.debug(f"HSA is passive secondary, spare is active primary")
+                logger.debug("HSA is passive secondary, spare is active primary")
                 loopback_status_on_spare = peer_info(
                     Node(port=spare.port, token=hsa.token, ip=spare.ip)
                 )
@@ -816,19 +811,19 @@ def get_state3(peer: Node, hsa: Node, spare: Node) -> int:
                     and loopback_status_on_spare.secondary_ip == hsa.ip
                     and loopback_status_on_spare.active_appliance == 1
                 ):
-                    logger.debug(f"Spare is active primary")
+                    logger.debug("Spare is active primary")
                     return 8
-                logger.debug(f"Spare status does not match")
+                logger.debug("Spare status does not match")
                 return 0
             elif hsa_status_on_hsa is None:
-                logger.debug(f"HSA is spare")
+                logger.debug("HSA is spare")
             else:
-                logger.debug(f"Invalid state")
+                logger.debug("Invalid state")
                 return 0
-        logger.debug(f"Peer is not spare")
+        logger.debug("Peer is not spare")
         return 0
     else:
-        logger.debug(f"Unmatched state")
+        logger.debug("Unmatched state")
         return 0
     return 0
 
@@ -931,7 +926,7 @@ def wait_valid_state3(peer: Node, hsa: Node, spare: Node) -> int:
 
     # If we exit the loop without returning, raise an error
     raise RuntimeError(
-        f"wait_valid_state failed: Valid state not reached after maximum retries (current state: 0)"
+        "wait_valid_state failed: Valid state not reached after maximum retries (current state: 0)"
     )
 
 
@@ -1014,17 +1009,26 @@ def main():
     # Get authentication tokens for each node
     logger.debug("Retrieving authentication token for peer node...")
     token_peer = get_authentication_token(
-        username=args.username, password=args.password, ip=args.ip_peer, port=args.port_peer
+        username=args.username,
+        password=args.password,
+        ip=args.ip_peer,
+        port=args.port_peer,
     )
 
     logger.debug("Retrieving authentication token for HSA node...")
     token_hsa = get_authentication_token(
-        username=args.username, password=args.password, ip=args.ip_hsa, port=args.port_hsa
+        username=args.username,
+        password=args.password,
+        ip=args.ip_hsa,
+        port=args.port_hsa,
     )
 
     logger.debug("Retrieving authentication token for spare node...")
     token_spare = get_authentication_token(
-        username=args.username, password=args.password, ip=args.ip_spare, port=args.port_spare
+        username=args.username,
+        password=args.password,
+        ip=args.ip_spare,
+        port=args.port_spare,
     )
 
     # Construct Node objects

@@ -5,25 +5,16 @@ This script performs the same verification as repave.py prior to step 1,
 then determines and prints the current state (0-4).
 """
 
-import argparse
-from math import e
-import sys
-import time
 import logging
+import time
 
 from cluster_client.config import config
 from cluster_client.node import Node
-from cluster_client.peer_info import peer_info
-from cluster_client.utilities import (
-    validate_ip_address,
-    validate_port,
-    validate_token_length,
-    setup_logging,
-)
 from cluster_client.peer_info1 import peer_info1
 
 logger = logging.getLogger(__name__)
 # logger.disabled = True  # Completely silences this logger
+
 
 def get_double_state(peer: Node, hsa: Node) -> int:
     """
@@ -34,35 +25,68 @@ def get_double_state(peer: Node, hsa: Node) -> int:
     peer_status = peer_info1(peer)
     hsa_status = peer_info1(hsa)
 
-    LOOPBACK="127.0.0.1"
+    LOOPBACK = "127.0.0.1"
 
     if peer_status is None:
-        logger.debug(f"Unable to get status for Peer")
+        logger.debug("Unable to get status for Peer")
     elif hsa_status is None:
-        logger.debug(f"Unable to get status for HSA")
-    elif peer_status.primary_ip==peer.ip and peer_status.secondary_ip=="" and peer_status.active_appliance==1:
-        logger.debug(f"Peer indicates state 1")
-        if hsa_status.primary_ip==LOOPBACK and hsa_status.secondary_ip=="" and hsa_status.active_appliance==1:
-            logger.debug(f"HSA indicates state 1")
+        logger.debug("Unable to get status for HSA")
+    elif (
+        peer_status.primary_ip == peer.ip
+        and peer_status.secondary_ip == ""
+        and peer_status.active_appliance == 1
+    ):
+        logger.debug("Peer indicates state 1")
+        if (
+            hsa_status.primary_ip == LOOPBACK
+            and hsa_status.secondary_ip == ""
+            and hsa_status.active_appliance == 1
+        ):
+            logger.debug("HSA indicates state 1")
             return 1
-    elif peer_status.primary_ip==peer.ip and peer_status.secondary_ip==hsa.ip and peer_status.active_appliance==1:
-        logger.debug(f"Peer indicates state 2")
-        if hsa_status.primary_ip==peer.ip and hsa_status.secondary_ip==hsa.ip and hsa_status.active_appliance==1:
-            logger.debug(f"HSA indicates state 2")
+    elif (
+        peer_status.primary_ip == peer.ip
+        and peer_status.secondary_ip == hsa.ip
+        and peer_status.active_appliance == 1
+    ):
+        logger.debug("Peer indicates state 2")
+        if (
+            hsa_status.primary_ip == peer.ip
+            and hsa_status.secondary_ip == hsa.ip
+            and hsa_status.active_appliance == 1
+        ):
+            logger.debug("HSA indicates state 2")
             return 2
-    elif peer_status.primary_ip==peer.ip and peer_status.secondary_ip==hsa.ip and peer_status.active_appliance==2:
-        logger.debug(f"Peer indicates state 3")
-        if hsa_status.primary_ip==peer.ip and hsa_status.secondary_ip==hsa.ip and hsa_status.active_appliance==2:
-            logger.debug(f"HSA indicates state 3")
+    elif (
+        peer_status.primary_ip == peer.ip
+        and peer_status.secondary_ip == hsa.ip
+        and peer_status.active_appliance == 2
+    ):
+        logger.debug("Peer indicates state 3")
+        if (
+            hsa_status.primary_ip == peer.ip
+            and hsa_status.secondary_ip == hsa.ip
+            and hsa_status.active_appliance == 2
+        ):
+            logger.debug("HSA indicates state 3")
             return 3
-    elif peer_status.primary_ip==hsa.ip and peer_status.secondary_ip==peer.ip and peer_status.active_appliance==1:
-        logger.debug(f"Peer indicates state 4")
-        if hsa_status.primary_ip==hsa.ip and hsa_status.secondary_ip==peer.ip and hsa_status.active_appliance==1:
-            logger.debug(f"HSA indicates state 4")
+    elif (
+        peer_status.primary_ip == hsa.ip
+        and peer_status.secondary_ip == peer.ip
+        and peer_status.active_appliance == 1
+    ):
+        logger.debug("Peer indicates state 4")
+        if (
+            hsa_status.primary_ip == hsa.ip
+            and hsa_status.secondary_ip == peer.ip
+            and hsa_status.active_appliance == 1
+        ):
+            logger.debug("HSA indicates state 4")
             return 4
     else:
         return 0
     return 0
+
 
 def verify_double_state(state: int, peer: Node, hsa: Node) -> bool:
     """
@@ -74,25 +98,23 @@ def verify_double_state(state: int, peer: Node, hsa: Node) -> bool:
     current_state = get_double_state(peer=peer, hsa=hsa)
     return current_state == state
 
+
 def _wait_for_double_state_condition(
-    peer: Node,
-    hsa: Node,
-    condition_check,
-    condition_description: str
+    peer: Node, hsa: Node, condition_check, condition_description: str
 ) -> int | None:
     """
     Helper function to wait for a state condition to be met.
-    
+
     Args:
         peer: Peer node
         spare: Spare node
         condition_check: Callable that takes current_state and returns (bool, should_return_state)
                         Returns (True, state) if condition met, (False, None) otherwise
         condition_description: Description of the condition being waited for (for logging)
-    
+
     Returns:
         The state when condition is met (if condition_check returns a state)
-        
+
     Raises:
         RuntimeError: If condition is not met after maximum retries
     """
@@ -108,10 +130,10 @@ def _wait_for_double_state_condition(
 
         # Check current state
         current_state = get_double_state(peer=peer, hsa=hsa)
-        
+
         # Check if condition is met
         condition_met, return_value = condition_check(current_state)
-        
+
         if condition_met:
             logger.debug(f"✓ {condition_description} reached successfully")
             return return_value
@@ -130,7 +152,7 @@ def _wait_for_double_state_condition(
             raise RuntimeError(
                 f"wait_state failed: {condition_description} not reached after maximum retries (current state: {current_state})"
             )
-    
+
     time.sleep(config.wait_state_settle_delay)
 
 
@@ -139,16 +161,17 @@ def wait_double_state(state: int, peer: Node, hsa: Node) -> None:
     Wait for the system to reach the specified state.
     Calls verify_double_state() repeatedly until the desired state is reached.
     """
+
     def check_state(current_state):
         if current_state == state:
             return (True, None)
         return (False, None)
-    
+
     _wait_for_double_state_condition(
         peer=peer,
         hsa=hsa,
         condition_check=check_state,
-        condition_description=f"State {state}"
+        condition_description=f"State {state}",
     )
 
 
@@ -167,6 +190,7 @@ def wait_valid_double_state(peer: Node, hsa: Node) -> int:
     Raises:
         RuntimeError: If a valid state is not reached after maximum retries
     """
+
     def check_valid_state(current_state):
         if current_state != 0:
             return (True, current_state)
@@ -178,18 +202,17 @@ def wait_valid_double_state(peer: Node, hsa: Node) -> int:
             f"Current state is 0 (invalid). Waiting {config.wait_state_retry_delay} seconds before retry..."
         )
         return (False, None)
-    
+
     result = _wait_for_double_state_condition(
         peer=peer,
         hsa=hsa,
         condition_check=check_valid_state,
-        condition_description="valid (non-zero) state"
+        condition_description="valid (non-zero) state",
     )
     # This should never be None since check_valid_state always returns a state when condition is met
     if result is None:
         raise RuntimeError("Unexpected None return from _wait_for_state_condition")
     return result
-
 
 
 def double_state_table(peer: Node, hsa: Node) -> str:
@@ -220,11 +243,15 @@ def double_state_table(peer: Node, hsa: Node) -> str:
     lines = []
 
     # Header row
-    header = f"| {'Field':<{col1_width}} | {'Peer':<{col2_width}} | {'HSA':<{col3_width}} |"
+    header = (
+        f"| {'Field':<{col1_width}} | {'Peer':<{col2_width}} | {'HSA':<{col3_width}} |"
+    )
     lines.append(header)
-    
+
     # Separator row (markdown table format)
-    separator = f"|{'-' * (col1_width + 2)}|{'-' * (col2_width + 2)}|{'-' * (col3_width + 2)}|"
+    separator = (
+        f"|{'-' * (col1_width + 2)}|{'-' * (col2_width + 2)}|{'-' * (col3_width + 2)}|"
+    )
     lines.append(separator)
 
     # Add ip row (first row)
@@ -290,4 +317,3 @@ def postcondition_double(state: int, peer: Node, hsa: Node) -> None:
     logger.debug(f"Waiting for system to reach state {target_state}.")
     wait_double_state(state=target_state, peer=peer, hsa=hsa)
     logger.debug(f"✓ System verified to be in state {target_state}.")
-

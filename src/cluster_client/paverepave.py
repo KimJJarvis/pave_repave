@@ -5,44 +5,26 @@ This script performs the same verification as repave.py prior to step 1,
 then determines and prints the current state (0-4).
 """
 
-import argparse
-import sys
-import time
 import logging
 
-from cluster_client.config import config
-from cluster_client.node import Node
-from cluster_client.peer_info import peer_info
-from cluster_client.utilities import (
-    validate_ip_address,
-    validate_port,
-    validate_token_length,
-    validate_unique_ips,
-    setup_logging,
-)
-from cluster_client.state_info import (
-    get_state3,
-    verify_state3,
-    wait_state3,
-    wait_valid_state3
+from cluster_client.become_hsa import become_hsa
+from cluster_client.double_state import (
+    postcondition_double,
+    precondition_double,
+    wait_valid_double_state,
 )
 from cluster_client.fail_over import fail_over
-from cluster_client.switch_primary_secondary import switch_primary_secondary
 from cluster_client.get_integration_token import get_integration_token
-from cluster_client.peer_info import peer_info
 from cluster_client.leave_cluster_hsa import leave_cluster_hsa
-from cluster_client.become_hsa import become_hsa
-from cluster_client.state_info import state3_table
-from cluster_client.state_info import (
-    get_state3,
-    state3_table,
-    get_state2,
-    state2_table,
-    wait_valid_state2,
+from cluster_client.node import Node
+from cluster_client.peer_info import peer_info
+from cluster_client.switch_primary_secondary import switch_primary_secondary
+from cluster_client.triple_state import (
+    postcondition_triple,
+    precondition_triple,
+    wait_valid_triple_state,
 )
-from cluster_client.triple_state import get_triple_state, triple_state_table, precondition_triple, postcondition_triple, wait_triple_state, wait_valid_triple_state
-from cluster_client.double_state import get_double_state, double_state_table, precondition_double, postcondition_double, wait_double_state, wait_valid_double_state
-from cluster_client.single_state import get_single_state, single_state_table, precondition_single, postcondition_single, wait_single_state, wait_valid_single_state
+
 
 logger = logging.getLogger(__name__)
 
@@ -168,8 +150,6 @@ def repave(peer: Node, hsa: Node, spare: Node) -> None:
         ValueError: If IP addresses are not unique or system is not in state 2-6
         RuntimeError: If peer information cannot be obtained or validation checks fail
     """
-    # Verify that all IP addresses are unique
-    validate_unique_ips(peer.ip, hsa.ip, spare.ip)
 
     # Wait for a valid (non-zero) state
     s = wait_valid_triple_state(peer=peer, hsa=hsa, spare=spare)
@@ -198,8 +178,6 @@ def repaveswitch(peer: Node, hsa: Node, spare: Node) -> None:
         ValueError: If IP addresses are not unique or system is not in state 2-8
         RuntimeError: If peer information cannot be obtained or validation checks fail
     """
-    # Verify that all IP addresses are unique
-    validate_unique_ips(peer.ip, hsa.ip, spare.ip)
 
     # Wait for a valid (non-zero) state
     s = wait_valid_triple_state(peer=peer, hsa=hsa, spare=spare)
@@ -229,8 +207,6 @@ def switch(peer: Node, hsa: Node) -> None:
         ValueError: If IP addresses are not unique or system is not in state 2-4
         RuntimeError: If peer information cannot be obtained or validation checks fail
     """
-    # Verify that all IP addresses are unique
-    validate_unique_ips(peer.ip, hsa.ip)
 
     # Wait for a valid (non-zero) state
     s = wait_valid_double_state(peer=peer, hsa=hsa)
@@ -242,5 +218,3 @@ def switch(peer: Node, hsa: Node) -> None:
 
     for f in funcs[s - 2 :] if 2 <= s <= len(funcs) + 1 else []:
         f(peer=peer, hsa=hsa)
-
-

@@ -5,15 +5,14 @@ Provides SSL context handling, error handling, and debug logging.
 Makes a single request without retries.
 """
 
-import sys
 import json
-import urllib.request
+import logging
+import ssl
+import time
 import urllib.error
 import urllib.parse
-import ssl
-import logging
-import time
-from typing import Dict, Any, Optional
+import urllib.request
+from typing import Any
 
 from cluster_client.config import config
 
@@ -25,8 +24,8 @@ def make_single_api_request(
     url: str,
     bearer_token: str,
     method: str = "GET",
-    data: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    data: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """
     Make a single API request to the NMS API with retry logic for 502 errors.
 

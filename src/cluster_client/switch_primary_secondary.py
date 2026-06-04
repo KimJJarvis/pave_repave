@@ -4,16 +4,11 @@ Script to perform switch-primary-secondary operation using NMS API.
 Determines the peer ID and calls the switch-primary-secondary endpoint on porta.
 """
 
-import argparse
-import sys
-import json
 import logging
 
-from cluster_client.node import Node
-from cluster_client.response import Response
-from cluster_client.make_single_api_request import make_single_api_request
-from cluster_client.utilities import setup_logging
 from cluster_client.config import config
+from cluster_client.make_single_api_request import make_single_api_request
+from cluster_client.node import Node
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +64,7 @@ def switch_primary_secondary(node: Node, id: int) -> None:
                     f"Max retries ({max_retries}) exceeded while waiting for LeaderFollower Job to complete"
                 )
                 raise RuntimeError(
-                    f"switch_primary_secondary failed: Max retries exceeded - LeaderFollower Job still active"
+                    "switch_primary_secondary failed: Max retries exceeded - LeaderFollower Job still active"
                 )
 
         # Check for fail over not yet complete - retry after delay
@@ -88,7 +83,7 @@ def switch_primary_secondary(node: Node, id: int) -> None:
                     f"Max retries ({max_retries}) exceeded while waiting for fail over to complete"
                 )
                 raise RuntimeError(
-                    f"switch_primary_secondary failed: Max retries exceeded - Fail over not complete"
+                    "switch_primary_secondary failed: Max retries exceeded - Fail over not complete"
                 )
 
         # Check for other 400 errors
@@ -120,5 +115,4 @@ def switch_primary_secondary(node: Node, id: int) -> None:
 
     # If we exit the loop without returning, we've exceeded max retries
     logger.error(f"Max retries ({max_retries}) exceeded")
-    raise RuntimeError(f"switch_primary_secondary failed: Max retries exceeded")
-
+    raise RuntimeError("switch_primary_secondary failed: Max retries exceeded")

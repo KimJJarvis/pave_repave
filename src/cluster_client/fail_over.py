@@ -4,17 +4,12 @@ Script to perform fail-over operation using NMS API.
 Calls the fail-over endpoint on porta with ipa as the peer IP.
 """
 
-import argparse
-import sys
-import json
 import logging
 import time
 
-from cluster_client.node import Node
-from cluster_client.response import Response
-from cluster_client.make_single_api_request import make_single_api_request
-from cluster_client.utilities import setup_logging
 from cluster_client.config import config
+from cluster_client.make_single_api_request import make_single_api_request
+from cluster_client.node import Node
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +60,7 @@ def fail_over(node: Node) -> None:
                     f"Max retries ({max_retries}) exceeded while waiting for LeaderFollower Job to complete"
                 )
                 raise RuntimeError(
-                    f"fail_over failed: Max retries exceeded - LeaderFollower Job still active"
+                    "fail_over failed: Max retries exceeded - LeaderFollower Job still active"
                 )
 
         # Check for HTTP 400 error
@@ -90,4 +85,4 @@ def fail_over(node: Node) -> None:
 
     # If we exit the loop without returning, we've exceeded max retries
     logger.error(f"Max retries ({max_retries}) exceeded")
-    raise RuntimeError(f"fail_over failed: Max retries exceeded")
+    raise RuntimeError("fail_over failed: Max retries exceeded")

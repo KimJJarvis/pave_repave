@@ -4,15 +4,12 @@ Script to become an HSA using NMS API.
 Retrieves an integration token and calls the become-hsa endpoint.
 """
 
-import argparse
-import sys
 import json
 import logging
 
-from cluster_client.node import Node
-from cluster_client.make_single_api_request import make_single_api_request
-from cluster_client.utilities import setup_logging
 from cluster_client.config import config
+from cluster_client.make_single_api_request import make_single_api_request
+from cluster_client.node import Node
 
 logger = logging.getLogger(__name__)
 
@@ -72,4 +69,3 @@ def become_hsa(node: Node, ip_peer: str, integration_token: str) -> None:
         )
 
     logger.info(f"✓ become-hsa started: {status_msg}")
-

@@ -4,19 +4,14 @@ Script to add an HSA to a cluster using NMS API.
 Retrieves an integration token from the peer HSA and calls become-hsa on the spare node.
 """
 
-import argparse
-import sys
-import json
 import logging
 
-from cluster_client.node import Node
 from cluster_client.get_integration_token import get_integration_token
-from cluster_client.become_hsa import become_hsa
-from cluster_client.peer_info import peer_info
-from cluster_client.utilities import setup_logging
 from cluster_client.join_cluster import join_cluster
+from cluster_client.node import Node
 
 logger = logging.getLogger(__name__)
+
 
 def add_peer(peer: Node, spare: Node, name: str) -> None:
     """
