@@ -14,7 +14,6 @@ from cluster_client.get_integration_token import get_integration_token
 from cluster_client.become_hsa import become_hsa
 from cluster_client.peer_info import peer_info
 from cluster_client.utilities import setup_logging
-from cluster_client.get_token import get_token
 
 logger = logging.getLogger(__name__)
 

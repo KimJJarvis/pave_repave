@@ -32,7 +32,6 @@ from cluster_client.get_integration_token import get_integration_token
 from cluster_client.peer_info import peer_info
 from cluster_client.leave_cluster_hsa import leave_cluster_hsa
 from cluster_client.become_hsa import become_hsa
-from cluster_client.get_token import get_token
 from cluster_client.state_info import state3_table
 from cluster_client.state_info import (
     get_state3,
@@ -41,9 +40,9 @@ from cluster_client.state_info import (
     state2_table,
     wait_valid_state2,
 )
-from cluster_client.triple_state import get_triple_state, triple_state_table, precondition_triple, postcondition_triple, wait_triple_state
-from cluster_client.double_state import get_double_state, double_state_table, precondition_double, postcondition_double, wait_double_state
-from cluster_client.single_state import get_single_state, single_state_table, precondition_single, postcondition_single, wait_single_state
+from cluster_client.triple_state import get_triple_state, triple_state_table, precondition_triple, postcondition_triple, wait_triple_state, wait_valid_triple_state
+from cluster_client.double_state import get_double_state, double_state_table, precondition_double, postcondition_double, wait_double_state, wait_valid_double_state
+from cluster_client.single_state import get_single_state, single_state_table, precondition_single, postcondition_single, wait_single_state, wait_valid_single_state
 
 logger = logging.getLogger(__name__)
 
@@ -173,8 +172,7 @@ def repave(peer: Node, hsa: Node, spare: Node) -> None:
     validate_unique_ips(peer.ip, hsa.ip, spare.ip)
 
     # Wait for a valid (non-zero) state
-    s = wait_valid_state3(peer=peer, hsa=hsa, spare=spare)
-    print(state3_table(peer=peer, hsa=hsa, spare=spare, state=s))
+    s = wait_valid_triple_state(peer=peer, hsa=hsa, spare=spare)
 
     funcs = [
         pave_fail_over,
@@ -204,8 +202,7 @@ def repaveswitch(peer: Node, hsa: Node, spare: Node) -> None:
     validate_unique_ips(peer.ip, hsa.ip, spare.ip)
 
     # Wait for a valid (non-zero) state
-    s = wait_valid_state3(peer=peer, hsa=hsa, spare=spare)
-    print(state3_table(peer=peer, hsa=hsa, spare=spare, state=s))
+    s = wait_valid_triple_state(peer=peer, hsa=hsa, spare=spare)
 
     funcs = [
         pave_fail_over,
@@ -236,8 +233,7 @@ def switch(peer: Node, hsa: Node) -> None:
     validate_unique_ips(peer.ip, hsa.ip)
 
     # Wait for a valid (non-zero) state
-    s = wait_valid_state2(peer=peer, hsa=hsa)
-    print(state2_table(peer=peer, hsa=hsa, state=s))
+    s = wait_valid_double_state(peer=peer, hsa=hsa)
 
     funcs = [
         switch_fail_over,

@@ -14,7 +14,6 @@ import logging
 from cluster_client.config import config
 from cluster_client.node import Node
 from cluster_client.peer_info import peer_info
-from cluster_client.get_token import get_token
 from cluster_client.utilities import (
     validate_ip_address,
     validate_port,

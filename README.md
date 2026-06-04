@@ -152,7 +152,6 @@ The basic commands request authentication tokens and then issue single API calls
 | Command                  | API call<br>api/v3/                      | Description                                            |
 | ------------------------ | ---------------------------------------- | ------------------------------------------------------ |
 | peer_info                | peers                                    | Query peer information                                 |
-| get_token                | users/signin                             | Retrieve authentication token                          |
 | get_integration_token    | cluster-orchestrator/integration-token   | Retrieve integration token                             |
 | become_hsa               | cluster-orchestrator/become-hsa          | Make a spare node become an HSA                        |
 | leave_cluster_hsa        | cluster-orchestrator/leave-cluster       | HSA node leave the cluster                             |

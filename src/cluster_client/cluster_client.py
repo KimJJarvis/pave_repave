@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Script to query peer information, get tokens, or perform fail-over from NMS API.
-Supports multiple commands: peer_info, get_token, get_integration_token, and fail_over.
+Supports multiple commands: peer_info, get_integration_token, and fail_over.
 """
 
 import argparse
@@ -13,7 +13,7 @@ import os
 from cluster_client.node import Node
 from cluster_client.peer_info import peer_info
 from cluster_client.utilities import setup_logging
-from cluster_client.get_token import get_token, get_authentication_token
+from cluster_client.get_token import get_authentication_token
 from cluster_client.get_integration_token import get_integration_token
 from cluster_client.fail_over import fail_over
 from cluster_client.switch_primary_secondary import switch_primary_secondary
