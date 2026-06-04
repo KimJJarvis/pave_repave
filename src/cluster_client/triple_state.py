@@ -10,7 +10,7 @@ import time
 
 from cluster_client.config import config
 from cluster_client.node import Node
-from cluster_client.peer_info1 import peer_info1
+from cluster_client.peer_info import peer_info
 
 logger = logging.getLogger(__name__)
 # logger.disabled = True  # Completely silences this logger
@@ -22,9 +22,9 @@ def get_triple_state(peer: Node, hsa: Node, spare: Node) -> int:
     """
     logger.debug(f"get_triple_state {peer} {hsa} {spare}")
     # Get status for each node
-    peer_status = peer_info1(peer)
-    hsa_status = peer_info1(hsa)
-    spare_status = peer_info1(spare)
+    peer_status = peer_info(peer)
+    hsa_status = peer_info(hsa)
+    spare_status = peer_info(spare)
 
     LOOPBACK = "127.0.0.1"
 
@@ -317,9 +317,9 @@ def triple_state_table(peer: Node, hsa: Node, spare: Node) -> str:
     """
 
     # Get status for each node
-    peer_status = peer_info1(peer)
-    hsa_status = peer_info1(hsa)
-    spare_status = peer_info1(spare)
+    peer_status = peer_info(peer)
+    hsa_status = peer_info(hsa)
+    spare_status = peer_info(spare)
 
     # Define column headers
     fields = ["active_appliance", "primary_ip", "secondary_ip", "id"]

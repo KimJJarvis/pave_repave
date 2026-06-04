@@ -15,6 +15,45 @@ logger = logging.getLogger(__name__)
 # logger.disabled = True  # Completely silences this logger
 
 
+def _map_active_appliance(active_appliance_str: str) -> int:
+    """
+    Map activeAppliance string to numeric value.
+
+    Args:
+        active_appliance_str: String value ("PRIMARY", "SECONDARY", or other)
+
+    Returns:
+        Numeric value: 1 for PRIMARY, 2 for SECONDARY, 0 for UNKNOWN
+    """
+    if active_appliance_str == "PRIMARY":
+        return 1
+    elif active_appliance_str == "SECONDARY":
+        return 2
+    else:
+        return 0
+
+
+def _create_status_from_peer(peer: dict) -> Status:
+    """
+    Create a Status object from a peer dictionary.
+
+    Args:
+        peer: Peer dictionary from API response
+
+    Returns:
+        Status object with peer information
+    """
+    active_appliance_str = peer.get("activeAppliance", "UNKNOWN")
+    active_appliance = _map_active_appliance(active_appliance_str)
+
+    return Status(
+        active_appliance=active_appliance,
+        primary_ip=peer.get("primaryIp", ""),
+        secondary_ip=peer.get("secondaryIp", ""),
+        id=peer.get("id", 0),
+    )
+
+
 def peer_info(node: Node) -> Status | None:
     """
     Get peer information from the NMS API v3/peers endpoint.
@@ -71,31 +110,19 @@ def peer_info(node: Node) -> Status | None:
 
             # Check if either primaryIp or secondaryIp matches the target IP
             if primary_ip == target_ip or secondary_ip == target_ip:
-                # Map activeAppliance string to numeric value
-                # "PRIMARY" = 1, "SECONDARY" = 2, "UNKNOWN" = 0
-                active_appliance_str = peer.get("activeAppliance", "UNKNOWN")
-                if active_appliance_str == "PRIMARY":
-                    active_appliance = 1
-                elif active_appliance_str == "SECONDARY":
-                    active_appliance = 2
-                else:
-                    active_appliance = 0
+                return _create_status_from_peer(peer)
 
-                peer_id = peer.get("id", 0)
-
-                logger.debug(
-                    f"✓ Peer match found: primaryIp={primary_ip}, secondaryIp={secondary_ip}, activeAppliance={active_appliance_str} ({active_appliance}), id={peer_id}"
-                )
-
-                return Status(
-                    active_appliance=active_appliance,
-                    primary_ip=primary_ip,
-                    secondary_ip=secondary_ip,
-                    id=peer_id,
-                )
+        # If there's only one peer, return it regardless of IP match
+        if len(peers) == 1:
+            peer = peers[0]
+            logger.info(
+                f"Only one peer exists, returning it: primaryIp={peer.get('primaryIp')}, secondaryIp={peer.get('secondaryIp')}"
+            )
+            return _create_status_from_peer(peer)
 
         # No matching peer found
-        logger.debug(f"No peer found matching target IP: {target_ip}")
+        logger.warning(f"No peer found matching target IP: {target_ip}")
+
         return None
 
     except KeyError as e:

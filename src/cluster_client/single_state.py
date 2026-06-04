@@ -10,7 +10,7 @@ import time
 
 from cluster_client.config import config
 from cluster_client.node import Node
-from cluster_client.peer_info1 import peer_info1
+from cluster_client.peer_info import peer_info
 
 logger = logging.getLogger(__name__)
 # logger.disabled = True  # Completely silences this logger
@@ -22,7 +22,7 @@ def get_single_state(peer: Node) -> int:
     """
     logger.debug(f"get_single_state {peer}")
     # Get status for each node
-    peer_status = peer_info1(peer)
+    peer_status = peer_info(peer)
 
     LOOPBACK = "127.0.0.1"
 
@@ -208,7 +208,7 @@ def single_state_table(peer: Node) -> str:
     """
 
     # Get status for the node
-    peer_status = peer_info1(peer)
+    peer_status = peer_info(peer)
 
     # Define column headers
     fields = ["active_appliance", "primary_ip", "secondary_ip", "id"]

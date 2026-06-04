@@ -10,7 +10,7 @@ import time
 
 from cluster_client.config import config
 from cluster_client.node import Node
-from cluster_client.peer_info1 import peer_info1
+from cluster_client.peer_info import peer_info
 
 logger = logging.getLogger(__name__)
 # logger.disabled = True  # Completely silences this logger
@@ -22,8 +22,8 @@ def get_double_state(peer: Node, hsa: Node) -> int:
     """
     logger.debug(f"get_double_state {peer} {hsa}")
     # Get status for each node
-    peer_status = peer_info1(peer)
-    hsa_status = peer_info1(hsa)
+    peer_status = peer_info(peer)
+    hsa_status = peer_info(hsa)
 
     LOOPBACK = "127.0.0.1"
 
@@ -228,8 +228,8 @@ def double_state_table(peer: Node, hsa: Node) -> str:
     """
 
     # Get status for each node
-    peer_status = peer_info1(peer)
-    hsa_status = peer_info1(hsa)
+    peer_status = peer_info(peer)
+    hsa_status = peer_info(hsa)
 
     # Define column headers
     fields = ["active_appliance", "primary_ip", "secondary_ip", "id"]
