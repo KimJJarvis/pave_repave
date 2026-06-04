@@ -12,7 +12,7 @@ import logging
 from cluster_client.node import Node
 from cluster_client.make_single_api_request import make_single_api_request
 from cluster_client.utilities import setup_logging
-from cluster_client.get_token import get_token
+from cluster_client.get_token import get_token, get_authentication_token
 from cluster_client.config import config
 
 logger = logging.getLogger(__name__)
@@ -68,54 +68,3 @@ def leave_cluster_hsa(node: Node, integration_token: str) -> None:
     status_msg = response.get("status", "unknown")
     logger.info(f"✓ leave-cluster-hsa completed: {status_msg}")
 
-
-def main():
-    """Main entry point for the script."""
-    parser = argparse.ArgumentParser(
-        description="Calls the gRPC endpoint api.v3.cluster-orchestrator.leave-cluster-hsa on a HSA node."
-    )
-    parser.add_argument(
-        "--log-level",
-        default="ERROR",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Set the logging level",
-    )
-    parser.add_argument(
-        "--log-file", type=str, default=None, help="Log to file instead of console"
-    )
-    parser.add_argument("--username", required=True, help="Username for authentication")
-    parser.add_argument("--password", required=True, help="Password for authentication")
-    parser.add_argument(
-        "--ip", required=True, help="IP address of the HSA (dot format)"
-    )
-    parser.add_argument(
-        "--port", required=True, type=int, help="Port number of the HSA"
-    )
-    parser.add_argument("--integration_token", required=True, help="Integration token")
-
-    args = parser.parse_args()
-
-    # ⚠️ Must be called before any other logging calls
-    setup_logging(args.log_level, args.log_file)
-
-    try:
-        # Get authentication token
-        token = get_token(
-            username=args.username, password=args.password, port=args.port
-        )
-
-        # Create Node object
-        node = Node(port=args.port, token=token, ip=args.ip)
-
-        # Call leave-cluster-hsa
-        leave_cluster_hsa(node=node, integration_token=args.integration_token)
-
-        print("✓ Operation completed successfully!")
-    except RuntimeError as e:
-        logger.error(f"Runtime error: {e}")
-        print(f"✗ Operation failed: {e}")
-        sys.exit(1)
-    except Exception as e:
-        logger.error(f"Unexpected error: {e}")
-        print(f"✗ Operation failed with unexpected error: {e}")
-        sys.exit(1)

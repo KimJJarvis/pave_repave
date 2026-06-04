@@ -14,7 +14,7 @@ import logging
 from cluster_client.config import config
 from cluster_client.node import Node
 from cluster_client.peer_info import peer_info
-from cluster_client.get_token import get_token
+from cluster_client.get_token import get_token, get_authentication_token
 from cluster_client.utilities import (
     validate_ip_address,
     validate_port,
@@ -1013,18 +1013,18 @@ def main():
 
     # Get authentication tokens for each node
     logger.debug("Retrieving authentication token for peer node...")
-    token_peer = get_token(
-        username=args.username, password=args.password, port=args.port_peer
+    token_peer = get_authentication_token(
+        username=args.username, password=args.password, ip=args.ip_peer, port=args.port_peer
     )
 
     logger.debug("Retrieving authentication token for HSA node...")
-    token_hsa = get_token(
-        username=args.username, password=args.password, port=args.port_hsa
+    token_hsa = get_authentication_token(
+        username=args.username, password=args.password, ip=args.ip_hsa, port=args.port_hsa
     )
 
     logger.debug("Retrieving authentication token for spare node...")
-    token_spare = get_token(
-        username=args.username, password=args.password, port=args.port_spare
+    token_spare = get_authentication_token(
+        username=args.username, password=args.password, ip=args.ip_spare, port=args.port_spare
     )
 
     # Construct Node objects

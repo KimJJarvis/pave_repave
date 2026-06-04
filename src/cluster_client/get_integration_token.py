@@ -12,7 +12,7 @@ import logging
 from cluster_client.node import Node
 from cluster_client.make_single_api_request import make_single_api_request
 from cluster_client.utilities import setup_logging
-from cluster_client.get_token import get_token
+from cluster_client.get_token import get_token, get_authentication_token
 from cluster_client.config import config
 
 logger = logging.getLogger(__name__)
@@ -91,8 +91,8 @@ def main():
 
     try:
         # Get authentication token
-        token = get_token(
-            username=args.username, password=args.password, port=args.port
+        token = get_authentication_token(
+            username=args.username, password=args.password, ip=args.ip, port=args.port
         )
 
         # Create Node object

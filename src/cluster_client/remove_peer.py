@@ -43,5 +43,3 @@ def remove_peer(cluster: Node, peer: Node) -> None:
 
     logger.info(f"✓ remove_peer completed successfully")
 
-
-# Made with Bob

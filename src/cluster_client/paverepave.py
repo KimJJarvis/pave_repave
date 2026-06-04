@@ -24,9 +24,7 @@ from cluster_client.state_info import (
     get_state3,
     verify_state3,
     wait_state3,
-    wait_valid_state3,
-    precondition3,
-    postcondition3,
+    wait_valid_state3
 )
 from cluster_client.fail_over import fail_over
 from cluster_client.switch_primary_secondary import switch_primary_secondary
@@ -41,10 +39,11 @@ from cluster_client.state_info import (
     state3_table,
     get_state2,
     state2_table,
-    precondition2,
-    postcondition2,
     wait_valid_state2,
 )
+from cluster_client.triple_state import get_triple_state, triple_state_table, precondition_triple, postcondition_triple, wait_triple_state
+from cluster_client.double_state import get_double_state, double_state_table, precondition_double, postcondition_double, wait_double_state
+from cluster_client.single_state import get_single_state, single_state_table, precondition_single, postcondition_single, wait_single_state
 
 logger = logging.getLogger(__name__)
 
@@ -72,46 +71,46 @@ def get_id(node: Node) -> int:
 
 
 def pave_fail_over(peer: Node, hsa: Node, spare: Node) -> None:
-    precondition3(state=2, peer=peer, hsa=hsa, spare=spare)
+    precondition_triple(state=2, peer=peer, hsa=hsa, spare=spare)
     logger.info("Calling fail_over on peer...")
     fail_over(node=peer)
     logger.info("✓ fail_over initiated successfully")
-    postcondition3(state=3, peer=peer, hsa=hsa, spare=spare)
+    postcondition_triple(state=3, peer=peer, hsa=hsa, spare=spare)
 
 
 def pave_switch_primary_secondary(peer: Node, hsa: Node, spare: Node) -> None:
-    precondition3(state=3, peer=peer, hsa=hsa, spare=spare)
+    precondition_triple(state=3, peer=peer, hsa=hsa, spare=spare)
     id = get_id(node=peer)
     logger.info("Calling switch_primary_secondary on HSA...")
     switch_primary_secondary(node=peer, id=id)
     logger.info("✓ switch_primary_secondary initiated successfully")
-    postcondition3(state=4, peer=peer, hsa=hsa, spare=spare)
+    postcondition_triple(state=4, peer=peer, hsa=hsa, spare=spare)
 
 
 def pave_leave_cluster_hsa(peer: Node, hsa: Node, spare: Node) -> None:
-    precondition3(state=4, peer=peer, hsa=hsa, spare=spare)
+    precondition_triple(state=4, peer=peer, hsa=hsa, spare=spare)
     logger.info("Get integration token")
     integration_token = get_integration_token(node=hsa)
     logger.info(f"✓ Integration token obtained (length: {len(integration_token)})")
     logger.info("Calling leave_cluster_hsa on HSA...")
     leave_cluster_hsa(node=peer, integration_token=integration_token)
     logger.info("✓ leave_cluster_hsa initiated successfully")
-    postcondition3(state=5, peer=peer, hsa=hsa, spare=spare)
+    postcondition_triple(state=5, peer=peer, hsa=hsa, spare=spare)
 
 
 def repaveswitch_become_hsa(peer: Node, hsa: Node, spare: Node) -> None:
-    precondition3(state=5, peer=peer, hsa=hsa, spare=spare)
+    precondition_triple(state=5, peer=peer, hsa=hsa, spare=spare)
     logger.info("Getting integration token")
     integration_token = get_integration_token(node=hsa)
     logger.info(f"✓ Integration token obtained (length: {len(integration_token)})")
     logger.info("Calling become_hsa on spare...")
     become_hsa(node=spare, ip_peer=hsa.ip, integration_token=integration_token)
     logger.info("✓ become_hsa initiated successfully")
-    postcondition3(state=6, peer=peer, hsa=hsa, spare=spare)
+    postcondition_triple(state=6, peer=peer, hsa=hsa, spare=spare)
 
 
 def repave_become_hsa(peer: Node, hsa: Node, spare: Node) -> None:
-    precondition3(state=5, peer=peer, hsa=hsa, spare=spare)
+    precondition_triple(state=5, peer=peer, hsa=hsa, spare=spare)
     logger.info("Getting integration token")
     integration_token = get_integration_token(node=hsa)
     logger.info(f"✓ Integration token obtained (length: {len(integration_token)})")
@@ -121,40 +120,40 @@ def repave_become_hsa(peer: Node, hsa: Node, spare: Node) -> None:
 
 
 def repave_fail_over(peer: Node, hsa: Node, spare: Node) -> None:
-    precondition3(state=6, peer=peer, hsa=hsa, spare=spare)
+    precondition_triple(state=6, peer=peer, hsa=hsa, spare=spare)
     spare.token = hsa.token
     logger.info("Calling fail_over on HSA...")
     fail_over(node=hsa)
     logger.info("✓ fail_over initiated successfully")
-    postcondition3(state=7, peer=peer, hsa=hsa, spare=spare)
+    postcondition_triple(state=7, peer=peer, hsa=hsa, spare=spare)
 
 
 def repave_switch_primary_secondary(peer: Node, hsa: Node, spare: Node) -> None:
-    precondition3(state=7, peer=peer, hsa=hsa, spare=spare)
+    precondition_triple(state=7, peer=peer, hsa=hsa, spare=spare)
     spare.token = hsa.token
     id = get_id(node=hsa)
     logger.info("Calling switch_primary_secondary on HSA...")
     switch_primary_secondary(node=hsa, id=id)
     logger.info("✓ switch_primary_secondary initiated successfully")
-    postcondition3(state=8, peer=peer, hsa=hsa, spare=spare)
+    postcondition_triple(state=8, peer=peer, hsa=hsa, spare=spare)
 
 
 def switch_fail_over(peer: Node, hsa: Node) -> None:
     logger.debug("switch_fail_over called")
-    precondition2(state=2, peer=peer, hsa=hsa)
+    precondition_double(state=2, peer=peer, hsa=hsa)
     logger.info("Calling fail_over on HSA...")
     fail_over(node=hsa)
     logger.info("✓ fail_over initiated successfully")
-    postcondition2(state=3, peer=peer, hsa=hsa)
+    postcondition_double(state=3, peer=peer, hsa=hsa)
 
 
 def switch_switch_primary_secondary(peer: Node, hsa: Node) -> None:
-    precondition2(state=3, peer=peer, hsa=hsa)
+    precondition_double(state=3, peer=peer, hsa=hsa)
     id = get_id(node=peer)
     logger.info("Calling switch_primary_secondary on HSA...")
     switch_primary_secondary(node=hsa, id=id)
     logger.info("✓ switch_primary_secondary initiated successfully")
-    postcondition2(state=4, peer=peer, hsa=hsa)
+    postcondition_double(state=4, peer=peer, hsa=hsa)
 
 
 def repave(peer: Node, hsa: Node, spare: Node) -> None:
@@ -249,77 +248,3 @@ def switch(peer: Node, hsa: Node) -> None:
         f(peer=peer, hsa=hsa)
 
 
-def main():
-    """Main entry point for the state_info script."""
-    parser = argparse.ArgumentParser(
-        description="Calls the gRPC endpoint api.v3.peers on the peer node and another node."
-    )
-    parser.add_argument(
-        "--log-level",
-        default="ERROR",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Set the logging level",
-    )
-    parser.add_argument(
-        "--log-file", type=str, default=None, help="Log to file instead of console"
-    )
-    parser.add_argument("--username", required=True, help="Username for authentication")
-    parser.add_argument("--password", required=True, help="Password for authentication")
-    parser.add_argument(
-        "--ip_peer", required=True, help="IP address of the peer node (in dot format)"
-    )
-    parser.add_argument(
-        "--port_peer", required=True, type=int, help="Port number for peer node"
-    )
-    parser.add_argument(
-        "--ip_hsa", required=True, help="IP address of the HSA node (in dot format)"
-    )
-    parser.add_argument(
-        "--port_hsa", required=True, type=int, help="Port number for HSA node"
-    )
-    parser.add_argument(
-        "--ip_spare", required=True, help="IP address of the spare node"
-    )
-    parser.add_argument(
-        "--port_spare", required=True, type=int, help="Port number for spare node"
-    )
-
-    args = parser.parse_args()
-
-    # ⚠️ Must be called before any other logging calls
-    setup_logging(args.log_level, args.log_file)
-
-    # Construct Node objects
-    try:
-        # Get authentication tokens for each node
-        token_peer = get_token(
-            username=args.username, password=args.password, port=args.port_peer
-        )
-
-        token_hsa = get_token(
-            username=args.username, password=args.password, port=args.port_hsa
-        )
-
-        token_spare = get_token(
-            username=args.username, password=args.password, port=args.port_spare
-        )
-
-        peer = Node(port=args.port_peer, token=token_peer, ip=args.ip_peer)
-        hsa = Node(port=args.port_hsa, token=token_hsa, ip=args.ip_hsa)
-        spare = Node(port=args.port_spare, token=token_spare, ip=args.ip_spare)
-
-        repaveswitch(peer=peer, hsa=hsa, spare=spare)
-
-        print("✓ SUCCESS: Pave/Repave completed successfully!")
-    except ValueError as e:
-        logger.error(f"Validation error: {e}")
-        print(f"✗ Pave/Repave failed: {e}")
-        sys.exit(1)
-    except RuntimeError as e:
-        logger.error(f"Runtime error: {e}")
-        print(f"✗ Pave/Repave failed: {e}")
-        sys.exit(1)
-    except Exception as e:
-        logger.error(f"Unexpected error: {e}")
-        print(f"✗ Pave/Repave failed with unexpected error: {e}")
-        sys.exit(1)
