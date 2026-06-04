@@ -58,8 +58,3 @@ def show_default_config() -> str:
 
     return "\n".join(lines)
 
-
-if __name__ == "__main__":
-    print(show_default_config())
-
-# Made with Bob

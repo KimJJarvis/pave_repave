@@ -30,7 +30,7 @@ def get_integration_token(node: Node) -> str:
     Raises:
         RuntimeError: If token field is not found in response or HTTP error occurs
     """
-    logger.info(
+    logger.debug(
         f"get_integration_token called with node: ip={node.ip}, port={node.port}"
     )
     host = config.host if config.port_forward else node.ip
@@ -58,53 +58,5 @@ def get_integration_token(node: Node) -> str:
         raise RuntimeError("get_integration_token: 'token' field not found in response")
 
     token = response["token"]
-    logger.info("✓ Integration token retrieved")
+    logger.debug("✓ Integration token retrieved")
     return token
-
-
-def main():
-    """Main entry point for the script."""
-    parser = argparse.ArgumentParser(
-        description="Calls the gRPC endpoint api.v3.cluster-orchestrator.integration-token on a  node."
-    )
-    parser.add_argument(
-        "--log-level",
-        default="INFO",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Set the logging level",
-    )
-    parser.add_argument(
-        "--log-file", type=str, default=None, help="Log to file instead of console"
-    )
-    parser.add_argument("--username", required=True, help="Username for authentication")
-    parser.add_argument("--password", required=True, help="Password for authentication")
-    parser.add_argument("--ip", required=True, help="IP address of peer (dot format)")
-    parser.add_argument("--port", required=True, type=int, help="Port number for peer")
-
-    args = parser.parse_args()
-
-    # ⚠️ Must be called before any other logging calls
-    setup_logging(args.log_level, args.log_file)
-
-    try:
-        # Get authentication token
-        token = get_authentication_token(
-            username=args.username, password=args.password, ip=args.ip, port=args.port
-        )
-
-        # Create Node object
-        node = Node(port=args.port, token=token, ip=args.ip)
-
-        # Get integration token
-        integration_token = get_integration_token(node=node)
-
-        # Output the integration token to stdout
-        print(integration_token)
-    except RuntimeError as e:
-        logger.error(f"Runtime error: {e}")
-        print(f"✗ Operation failed: {e}", file=sys.stderr)
-        sys.exit(1)
-    except Exception as e:
-        logger.error(f"Unexpected error: {e}")
-        print(f"✗ Operation failed with unexpected error: {e}", file=sys.stderr)
-        sys.exit(1)

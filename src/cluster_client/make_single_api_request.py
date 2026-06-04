@@ -52,10 +52,9 @@ def make_single_api_request(
         else:
             port = "unknown"
 
-    logger.debug(f"Making {method} request to: {url}")
-    logger.debug(f"Request port: {port}")
+    logger.info(f"Request method: {method} {url}")
     if data:
-        logger.debug(f"Request data: {json.dumps(data, indent=2)}")
+        logger.info(f"Request data: {json.dumps(data, indent=2)}")
 
     # Create SSL context that doesn't verify certificates (equivalent to curl -k)
     ssl_context = ssl.create_default_context()
@@ -91,17 +90,31 @@ def make_single_api_request(
             with urllib.request.urlopen(
                 request, context=ssl_context, timeout=config.http_timeout_value
             ) as response:
-                logger.debug(f"Response status: {response.status}")
-                response_data = response.read().decode("utf-8")
-                parsed_response = json.loads(response_data)
-                logger.debug(f"Response data: {json.dumps(parsed_response, indent=2)}")
+                logger.info(f"Response status: {response.status}")
+                try:
+                    response_data = response.read().decode("utf-8")
+                except UnicodeDecodeError as e:
+                    logger.error(f"Unicode Decode Error: {e}")
+                    raise ValueError(f"Response contains invalid UTF-8: {e}") from e
+                
+                try:
+                    parsed_response = json.loads(response_data)
+                except json.JSONDecodeError as e:
+                    logger.error(f"JSON Decode Error: {e}")
+                    logger.error(f"Response data (first 500 chars): {response_data[:500]}")
+                    raise ValueError(f"Invalid JSON in response: {e}") from e
+                
+                logger.info(f"Response data: {json.dumps(parsed_response, indent=2)}")
                 return parsed_response
 
         except urllib.error.HTTPError as e:
-            error_body = e.read().decode("utf-8")
-            logger.debug(f"HTTP Error {e.code}: {e.reason}")
-            logger.debug(f"URL: {url}")
-            logger.debug(f"Response: {error_body}")
+            try:
+                error_body = e.read().decode("utf-8")
+            except UnicodeDecodeError as decode_err:
+                logger.error(f"Unicode Decode Error in error response: {decode_err}")
+                raise ValueError(f"Error response contains invalid UTF-8: {decode_err}") from decode_err
+            logger.info(f"HTTP Error {e.code}: {e.reason}")
+            logger.info(f"Response: {error_body}")
 
             # Handle 502 Bad Gateway with retry logic
             if e.code == 502:
@@ -137,21 +150,23 @@ def make_single_api_request(
                 # Add the HTTP status code to the response
                 error_data["_http_status_code"] = e.code
                 return error_data
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as json_err:
                 # If response is not JSON, return a structured error
+                logger.warning(f"Error response is not valid JSON: {json_err}")
+                logger.debug(f"Error body (first 500 chars): {error_body[:500]}")
                 return {"error": error_body, "_http_status_code": e.code}
 
         except urllib.error.URLError as e:
             logger.error(f"URL Error: {e.reason}")
             logger.error(f"URL: {url}")
             raise RuntimeError(f"URL Error: {e.reason}") from e
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON Decode Error: {e}")
-            raise ValueError(f"JSON Decode Error: {e}") from e
+        except ValueError:
+            # Re-raise ValueError exceptions (from JSON/Unicode decode errors)
+            raise
         except TimeoutError as e:
-            logger.error("Request timed out after 30 seconds")
+            logger.error(f"Request timed out after {config.http_timeout_value} seconds")
             logger.error(f"URL: {url}")
-            raise RuntimeError("Request timed out after 30 seconds") from e
+            raise RuntimeError(f"Request timed out after {config.http_timeout_value} seconds") from e
         except Exception as e:
             logger.error(f"Unexpected error: {type(e).__name__}: {e}")
             logger.error(f"URL: {url}")

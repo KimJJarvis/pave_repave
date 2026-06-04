@@ -8,30 +8,32 @@ import json
 import logging
 
 from cluster_client.config import config
+from cluster_client.get_integration_token import get_integration_token
 from cluster_client.make_single_api_request import make_single_api_request
 from cluster_client.node import Node
 
 logger = logging.getLogger(__name__)
 
 
-def join_cluster(peer: Node, spare: Node, integration_token: str, name: str) -> None:
+def join_cluster(peer: Node, spare: Node, name: str) -> None:
     """
-    Call the join-cluster endpoint.
+    Add a peer to an existing cluster by getting integration token from a cluster node and calling join-cluster endpoint.
 
     Args:
-        node: Node object with connection details
-        ip_peer: Peer IP address (primary IP)
-        integration_token: Integration token
-        name: Name of the new node joining the cluster
-
-    Returns:
-        Response dictionary from the API
+        peer: Node object for an existing peer (must be in cluster)
+        spare: Node object for the spare node to become peer
+        name: Name of the peer to be added to the cluster
 
     Raises:
-        RuntimeError: If the API returns HTTP 400, other error status, or unexpected response
+        RuntimeError: If any API call fails or validation checks fail
     """
     # Log parameters
-    logger.debug(f"join-cluster called on {peer}, ip_peer: {spare}, name: {name}")
+    logger.debug(f"join_cluster called with peer: {peer}, spare: {spare}, name: {name}")
+
+    # Get integration token from peer
+    logger.debug("Getting integration token")
+    integration_token = get_integration_token(node=peer)
+    logger.debug(f"✓ Integration token obtained (length: {len(integration_token)})")
 
     host = config.host if config.port_forward else spare.ip
     base_url = f"https://{host}:{spare.port}"
@@ -76,4 +78,4 @@ def join_cluster(peer: Node, spare: Node, integration_token: str, name: str) -> 
             f"join_cluster did not return expected success message. Got: {status_msg}"
         )
 
-    logger.info(f"✓ join- started: {status_msg}")
+    logger.debug(f"✓ join- started: {status_msg}")

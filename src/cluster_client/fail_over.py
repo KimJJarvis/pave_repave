@@ -26,7 +26,7 @@ def fail_over(node: Node) -> None:
     """
     base_url = f"https://localhost:{node.port}"
     url = f"{base_url}/api/v3/cluster-manager/fail-over"
-    logger.info(f"fail_over called - Node(port={node.port}, ip={node.ip})")
+    logger.debug(f"fail_over called - Node(port={node.port}, ip={node.ip})")
 
     data = {"peerIp": node.ip}
     retry_count = 0
@@ -71,7 +71,7 @@ def fail_over(node: Node) -> None:
 
         # Check for success message
         if status_message == "OKAY: Failover successfully started.":
-            logger.info("✓ Failover successfully started")
+            logger.debug("✓ Failover successfully started")
             return
 
         # Any other response is unexpected

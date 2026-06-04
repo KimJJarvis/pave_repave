@@ -7,29 +7,31 @@ import json
 import logging
 
 from cluster_client.config import config
+from cluster_client.get_integration_token import get_integration_token
 from cluster_client.make_single_api_request import make_single_api_request
 from cluster_client.node import Node
 
 logger = logging.getLogger(__name__)
 
 
-def leave_cluster(cluster: Node, peer: Node, integration_token: str) -> None:
+def leave_cluster(cluster: Node, peer: Node) -> None:
     """
     Call the leave-cluster endpoint to remove a node from the cluster.
+    Automatically retrieves the integration token from the cluster node.
 
     Args:
         node_cluster: Node object for the cluster node (the one initiating the leave)
         node_peer: Node object for the peer node that is leaving
-        integration_token: Integration token for the leave-cluster request
 
     Raises:
         RuntimeError: If the API returns HTTP 400, other error status, or unexpected response
     """
     # Log parameters
-    logger.debug(
-        f"leave-cluster called on cluster node {cluster}, peer node: {peer}, "
-        f"integration_token provided: {bool(integration_token)}"
-    )
+    logger.debug(f"leave-cluster called on cluster node {cluster}, peer node: {peer}")
+
+    # Get integration token from cluster node
+    logger.debug("Retrieving integration token from cluster node...")
+    integration_token = get_integration_token(node=cluster)
 
     host = config.host if config.port_forward else peer.ip
     base_url = f"https://{host}:{peer.port}"
@@ -72,7 +74,7 @@ def leave_cluster(cluster: Node, peer: Node, integration_token: str) -> None:
             f"leave_cluster did not return expected success message. Got: {status_msg}"
         )
 
-    logger.info(f"✓ leave-cluster started: {status_msg}")
+    logger.debug(f"✓ leave-cluster started: {status_msg}")
 
 
 # Made with Bob

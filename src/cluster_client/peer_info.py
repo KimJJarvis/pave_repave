@@ -115,7 +115,7 @@ def peer_info(node: Node) -> Status | None:
         # If there's only one peer, return it regardless of IP match
         if len(peers) == 1:
             peer = peers[0]
-            logger.info(
+            logger.debug(
                 f"Only one peer exists, returning it: primaryIp={peer.get('primaryIp')}, secondaryIp={peer.get('secondaryIp')}"
             )
             return _create_status_from_peer(peer)

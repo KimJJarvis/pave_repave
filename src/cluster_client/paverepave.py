@@ -53,59 +53,59 @@ def get_id(node: Node) -> int:
 
 def pave_fail_over(peer: Node, hsa: Node, spare: Node) -> None:
     precondition_triple(state=2, peer=peer, hsa=hsa, spare=spare)
-    logger.info("Calling fail_over on peer...")
+    logger.debug("Calling fail_over on peer...")
     fail_over(node=peer)
-    logger.info("✓ fail_over initiated successfully")
+    logger.debug("✓ fail_over initiated successfully")
     postcondition_triple(state=3, peer=peer, hsa=hsa, spare=spare)
 
 
 def pave_switch_primary_secondary(peer: Node, hsa: Node, spare: Node) -> None:
     precondition_triple(state=3, peer=peer, hsa=hsa, spare=spare)
     id = get_id(node=peer)
-    logger.info("Calling switch_primary_secondary on HSA...")
+    logger.debug("Calling switch_primary_secondary on HSA...")
     switch_primary_secondary(node=peer, id=id)
-    logger.info("✓ switch_primary_secondary initiated successfully")
+    logger.debug("✓ switch_primary_secondary initiated successfully")
     postcondition_triple(state=4, peer=peer, hsa=hsa, spare=spare)
 
 
 def pave_leave_cluster_hsa(peer: Node, hsa: Node, spare: Node) -> None:
     precondition_triple(state=4, peer=peer, hsa=hsa, spare=spare)
-    logger.info("Get integration token")
+    logger.debug("Get integration token")
     integration_token = get_integration_token(node=hsa)
-    logger.info(f"✓ Integration token obtained (length: {len(integration_token)})")
-    logger.info("Calling leave_cluster_hsa on HSA...")
+    logger.debug(f"✓ Integration token obtained (length: {len(integration_token)})")
+    logger.debug("Calling leave_cluster_hsa on HSA...")
     leave_cluster_hsa(node=peer, integration_token=integration_token)
-    logger.info("✓ leave_cluster_hsa initiated successfully")
+    logger.debug("✓ leave_cluster_hsa initiated successfully")
     postcondition_triple(state=5, peer=peer, hsa=hsa, spare=spare)
 
 
 def repaveswitch_become_hsa(peer: Node, hsa: Node, spare: Node) -> None:
     precondition_triple(state=5, peer=peer, hsa=hsa, spare=spare)
-    logger.info("Getting integration token")
+    logger.debug("Getting integration token")
     integration_token = get_integration_token(node=hsa)
-    logger.info(f"✓ Integration token obtained (length: {len(integration_token)})")
-    logger.info("Calling become_hsa on spare...")
+    logger.debug(f"✓ Integration token obtained (length: {len(integration_token)})")
+    logger.debug("Calling become_hsa on spare...")
     become_hsa(node=spare, ip_peer=hsa.ip, integration_token=integration_token)
-    logger.info("✓ become_hsa initiated successfully")
+    logger.debug("✓ become_hsa initiated successfully")
     postcondition_triple(state=6, peer=peer, hsa=hsa, spare=spare)
 
 
 def repave_become_hsa(peer: Node, hsa: Node, spare: Node) -> None:
     precondition_triple(state=5, peer=peer, hsa=hsa, spare=spare)
-    logger.info("Getting integration token")
+    logger.debug("Getting integration token")
     integration_token = get_integration_token(node=hsa)
-    logger.info(f"✓ Integration token obtained (length: {len(integration_token)})")
-    logger.info("Calling become_hsa on spare...")
+    logger.debug(f"✓ Integration token obtained (length: {len(integration_token)})")
+    logger.debug("Calling become_hsa on spare...")
     become_hsa(node=spare, ip_peer=hsa.ip, integration_token=integration_token)
-    logger.info("✓ become_hsa initiated successfully")
+    logger.debug("✓ become_hsa initiated successfully")
 
 
 def repave_fail_over(peer: Node, hsa: Node, spare: Node) -> None:
     precondition_triple(state=6, peer=peer, hsa=hsa, spare=spare)
     spare.token = hsa.token
-    logger.info("Calling fail_over on HSA...")
+    logger.debug("Calling fail_over on HSA...")
     fail_over(node=hsa)
-    logger.info("✓ fail_over initiated successfully")
+    logger.debug("✓ fail_over initiated successfully")
     postcondition_triple(state=7, peer=peer, hsa=hsa, spare=spare)
 
 
@@ -113,27 +113,27 @@ def repave_switch_primary_secondary(peer: Node, hsa: Node, spare: Node) -> None:
     precondition_triple(state=7, peer=peer, hsa=hsa, spare=spare)
     spare.token = hsa.token
     id = get_id(node=hsa)
-    logger.info("Calling switch_primary_secondary on HSA...")
+    logger.debug("Calling switch_primary_secondary on HSA...")
     switch_primary_secondary(node=hsa, id=id)
-    logger.info("✓ switch_primary_secondary initiated successfully")
+    logger.debug("✓ switch_primary_secondary initiated successfully")
     postcondition_triple(state=8, peer=peer, hsa=hsa, spare=spare)
 
 
 def switch_fail_over(peer: Node, hsa: Node) -> None:
     logger.debug("switch_fail_over called")
     precondition_double(state=2, peer=peer, hsa=hsa)
-    logger.info("Calling fail_over on HSA...")
+    logger.debug("Calling fail_over on HSA...")
     fail_over(node=hsa)
-    logger.info("✓ fail_over initiated successfully")
+    logger.debug("✓ fail_over initiated successfully")
     postcondition_double(state=3, peer=peer, hsa=hsa)
 
 
 def switch_switch_primary_secondary(peer: Node, hsa: Node) -> None:
     precondition_double(state=3, peer=peer, hsa=hsa)
     id = get_id(node=peer)
-    logger.info("Calling switch_primary_secondary on HSA...")
+    logger.debug("Calling switch_primary_secondary on HSA...")
     switch_primary_secondary(node=hsa, id=id)
-    logger.info("✓ switch_primary_secondary initiated successfully")
+    logger.debug("✓ switch_primary_secondary initiated successfully")
     postcondition_double(state=4, peer=peer, hsa=hsa)
 
 
@@ -195,26 +195,3 @@ def repaveswitch(peer: Node, hsa: Node, spare: Node) -> None:
         f(peer=peer, hsa=hsa, spare=spare)
 
 
-def switch(peer: Node, hsa: Node) -> None:
-    """
-    Perform switch operation on the cluster (states 2-4).
-
-    Args:
-        peer: Peer node
-        hsa: HSA node
-
-    Raises:
-        ValueError: If IP addresses are not unique or system is not in state 2-4
-        RuntimeError: If peer information cannot be obtained or validation checks fail
-    """
-
-    # Wait for a valid (non-zero) state
-    s = wait_valid_double_state(peer=peer, hsa=hsa)
-
-    funcs = [
-        switch_fail_over,
-        switch_switch_primary_secondary,
-    ]
-
-    for f in funcs[s - 2 :] if 2 <= s <= len(funcs) + 1 else []:
-        f(peer=peer, hsa=hsa)

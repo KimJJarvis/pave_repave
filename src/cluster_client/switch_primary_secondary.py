@@ -29,7 +29,7 @@ def switch_primary_secondary(node: Node, id: int) -> None:
     host = config.host if config.port_forward else node.ip
     base_url = f"https://{host}:{node.port}"
     url = f"{base_url}/api/v3/cluster-manager/switch-primary-secondary"
-    logger.info(f"Calling switch-primary-secondary on {url}...")
+    logger.debug(f"Calling switch-primary-secondary on {url}...")
 
     data = {"peerId": str(id)}
     retry_count = 0
@@ -101,7 +101,7 @@ def switch_primary_secondary(node: Node, id: int) -> None:
             message_field
             == "The primary / secondary appliance roles on this peer have been switched."
         ):
-            logger.info("✓ switch-primary-secondary completed successfully")
+            logger.debug("✓ switch-primary-secondary completed successfully")
             return
 
         # Any other response is unexpected

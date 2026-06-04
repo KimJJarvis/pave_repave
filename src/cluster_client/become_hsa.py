@@ -8,29 +8,35 @@ import json
 import logging
 
 from cluster_client.config import config
+from cluster_client.get_integration_token import get_integration_token
 from cluster_client.make_single_api_request import make_single_api_request
 from cluster_client.node import Node
 
 logger = logging.getLogger(__name__)
 
 
-def become_hsa(node: Node, ip_peer: str, integration_token: str) -> None:
+def become_hsa(node: Node, peer: Node) -> None:
     """
-    Call the become-hsa endpoint.
+    Add an HSA to an existing cluster by getting integration token from peer and calling become-hsa on node.
 
     Args:
-        node: Node object with connection details
-        ip_peer: Peer IP address (primary IP)
-        integration_token: Integration token
-
-    Returns:
-        Response dictionary from the API
+        node: Node object for the spare node to become HSA
+        peer: Node object for the existing HSA peer (must be in cluster)
 
     Raises:
         RuntimeError: If the API returns HTTP 400, other error status, or unexpected response
     """
+    logger.debug(f"become_hsa called with peer: {peer}, spare: {node}")
+    
+    # Get integration token from peer
+    logger.debug("Getting integration token")
+    integration_token = get_integration_token(node=peer)
+    logger.debug(f"✓ Integration token obtained (length: {len(integration_token)})")
+    
     # Log parameters
-    logger.info(f"become_hsa called on {node}, ip_peer: {ip_peer}")
+    logger.debug(f"Calling become-hsa on {node}")
+    
+    ip_peer = peer.ip
 
     host = config.host if config.port_forward else node.ip
     base_url = f"https://{host}:{node.port}"
@@ -68,4 +74,4 @@ def become_hsa(node: Node, ip_peer: str, integration_token: str) -> None:
             f"become_hsa did not return expected success message. Got: {status_msg}"
         )
 
-    logger.info(f"✓ become-hsa started: {status_msg}")
+    logger.debug(f"✓ become-hsa started: {status_msg}")

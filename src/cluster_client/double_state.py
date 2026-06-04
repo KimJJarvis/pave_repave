@@ -121,12 +121,12 @@ def _wait_for_double_state_condition(
     max_retries = config.wait_state_max_retries
     retry_count = 0
 
-    logger.debug(f"Waiting for {condition_description}...")
-
+    logger.info(f"Waiting for {condition_description}...")
+    logger.info(f"Waiting initial {config.wait_state_initial_delay} seconds for state to settle")
     time.sleep(config.wait_state_initial_delay)
     while retry_count < max_retries:
         if retry_count > 0:
-            logger.debug(f"Retry attempt {retry_count}/{max_retries}...")
+            logger.info(f"Retry attempt {retry_count}/{max_retries}...")
 
         # Check current state
         current_state = get_double_state(peer=peer, hsa=hsa)
@@ -135,13 +135,13 @@ def _wait_for_double_state_condition(
         condition_met, return_value = condition_check(current_state)
 
         if condition_met:
-            logger.debug(f"✓ {condition_description} reached successfully")
+            logger.info(f"✓ {condition_description} reached successfully")
             return return_value
 
         # If condition not met, wait and retry
         retry_count += 1
         if retry_count < max_retries:
-            logger.debug(
+            logger.info(
                 f"Current state is {current_state}. Waiting {config.wait_state_retry_delay} seconds before retry..."
             )
             logger.info(
@@ -152,7 +152,7 @@ def _wait_for_double_state_condition(
             raise RuntimeError(
                 f"wait_state failed: {condition_description} not reached after maximum retries (current state: {current_state})"
             )
-
+    logger.info(f"Waiting final {config.wait_state_settle_delay} seconds for state to settle")
     time.sleep(config.wait_state_settle_delay)
 
 
@@ -195,10 +195,7 @@ def wait_valid_double_state(peer: Node, hsa: Node) -> int:
         if current_state != 0:
             return (True, current_state)
         # Log warning for invalid state
-        logger.warning(
-            f"Current state is 0 (invalid). Waiting {config.wait_state_retry_delay} seconds before retry..."
-        )
-        print(
+        logger.info(
             f"Current state is 0 (invalid). Waiting {config.wait_state_retry_delay} seconds before retry..."
         )
         return (False, None)
@@ -301,7 +298,7 @@ def precondition_double(state: int, peer: Node, hsa: Node) -> None:
     target_state = state
     if not verify_double_state(state=target_state, peer=peer, hsa=hsa):
         raise ValueError(f"System is not in state {target_state}.")
-    logger.debug(f"✓ System verified to be in state {target_state}.")
+    logger.info(f"✓ System verified to be in state {target_state}.")
 
 
 def postcondition_double(state: int, peer: Node, hsa: Node) -> None:
@@ -314,6 +311,6 @@ def postcondition_double(state: int, peer: Node, hsa: Node) -> None:
         hsa: HSA node
     """
     target_state = state
-    logger.debug(f"Waiting for system to reach state {target_state}.")
+    logger.info(f"Waiting for system to reach state {target_state}.")
     wait_double_state(state=target_state, peer=peer, hsa=hsa)
-    logger.debug(f"✓ System verified to be in state {target_state}.")
+    logger.info(f"✓ System verified to be in state {target_state}.")
