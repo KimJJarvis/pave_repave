@@ -2,6 +2,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class AppConfig(BaseSettings):
+    """Application configuration with environment variable overrides.
+    
+    All settings can be overridden using environment variables with
+    the CLUSTER_CLIENT_ prefix (e.g., CLUSTER_CLIENT_HOST).
+    """
+    
     model_config = SettingsConfigDict(env_prefix="CLUSTER_CLIENT_")
     host: str = "localhost"
     http_502_max_retries: int = 5

@@ -14,23 +14,25 @@ from cluster_client.node import Node
 logger = logging.getLogger(__name__)
 
 
-def leave_cluster(cluster: Node, peer: Node) -> None:
+def leave_cluster(cluster: Node, peer: Node, force: bool = True) -> None:
     """
-    Call the leave-cluster endpoint to remove a node from the cluster.
-    Automatically retrieves the integration token from the cluster node.
+    Remove a node from the cluster using the NMS Cluster Orchestrator API.
+    
+    This function calls the leave-cluster endpoint on the peer node to remove it
+    from the cluster. The operation uses an integration token automatically
+    retrieved from the cluster node.
+
+    API Endpoint:
+        POST /api/v3/cluster-orchestrator/leave-cluster
 
     Args:
-        node_cluster: Node object for the cluster node (the one initiating the leave)
-        node_peer: Node object for the peer node that is leaving
+        cluster: Node object for the cluster node (the one initiating the leave operation)
+        peer: Node object for the peer node that is leaving the cluster
+        force: Whether to force the removal (default: True)
 
     Raises:
         RuntimeError: If the API returns HTTP 400, other error status, or unexpected response
     """
-    # Log parameters
-    logger.debug(f"leave-cluster called on cluster node {cluster}, peer node: {peer}")
-
-    # Get integration token from cluster node
-    logger.debug("Retrieving integration token from cluster node...")
     integration_token = get_integration_token(node=cluster)
 
     host = config.host if config.port_forward else peer.ip
@@ -38,7 +40,7 @@ def leave_cluster(cluster: Node, peer: Node) -> None:
     url = f"{base_url}/api/v3/cluster-orchestrator/leave-cluster"
 
     data = {
-        "force": True,
+        "force": force,
         "ip": peer.ip,
         "token": integration_token,
     }
@@ -47,34 +49,23 @@ def leave_cluster(cluster: Node, peer: Node) -> None:
         url=url, bearer_token=cluster.token, method="POST", data=data
     )
 
-    # Log response object
-    logger.debug(f"leave_cluster response: {json.dumps(response, indent=2)}")
-
     # Check for HTTP status code (default to 200 if not present)
     http_status = response.get("_http_status_code", 200)
 
     if http_status == 400:
-        error_msg = response.get("error", "Unknown error")
-        logger.error(f"HTTP 400 Bad Request: {error_msg}")
-        raise RuntimeError(f"leave_cluster returned HTTP 400: {response}")
+        error_message = f"leave_cluster returned HTTP 400: {response}"
+        logger.error(error_message)
+        raise RuntimeError(error_message)
 
     if http_status != 200:
-        error_msg = response.get("error", "Unknown error")
-        logger.error(f"HTTP {http_status} Error: {error_msg}")
-        raise RuntimeError(
-            f"leave_cluster returned unexpected HTTP status {http_status}: {response}"
-        )
+        error_message = f"leave_cluster returned unexpected HTTP status {http_status}: {response}"
+        logger.error(error_message)
+        raise RuntimeError(error_message)
 
     # Check for success message
     status_msg = response.get("status", "")
-    logger.debug(f"leave_cluster response: {status_msg}")
     if "peer successfully removed" not in status_msg.lower():
-        logger.error(f"Unexpected response status: {status_msg}")
-        raise RuntimeError(
-            f"leave_cluster did not return expected success message. Got: {status_msg}"
-        )
+        error_message = f"leave_cluster did not return expected success message. Got: {status_msg}"
+        logger.error(error_message)
+        raise RuntimeError(error_message)
 
-    logger.debug(f"✓ leave-cluster started: {status_msg}")
-
-
-# Made with Bob

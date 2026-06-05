@@ -3,8 +3,9 @@
 Node model for representing a cluster node.
 """
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 
+from cluster_client.get_authentication_token import get_authentication_token
 from cluster_client.utilities import validate_ip_format, validate_port
 
 
@@ -12,8 +13,10 @@ class Node(BaseModel):
     """Represents a cluster node with connection details."""
 
     port: int
-    token: str
+    token: str = ""
     ip: str
+    username: str
+    password: str
 
     @field_validator("ip")
     @classmethod
@@ -32,6 +35,17 @@ class Node(BaseModel):
             msg = f"Invalid port: {value}"
             raise ValueError(msg)
         return value
+
+    @model_validator(mode="after")
+    def get_token(self) -> "Node":
+        """Get authentication token using username and password."""
+        self.token = get_authentication_token(
+            username=self.username,
+            password=self.password,
+            ip=self.ip,
+            port=self.port,
+        )
+        return self
 
     def __str__(self) -> str:
         """Return string representation of the node."""

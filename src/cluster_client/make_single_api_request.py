@@ -83,8 +83,6 @@ def make_single_api_request(
         if attempt > 0:
             logger.info(f"Retry attempt {attempt} of {max_retries - 1} after 502 error")
 
-        logger.debug("Sending request...")
-
         try:
             # Make the request with timeout
             with urllib.request.urlopen(
@@ -126,9 +124,9 @@ def make_single_api_request(
                     continue  # Retry the request
                 else:
                     # Maximum retries exceeded
-                    raise RuntimeError(
-                        f"Maximum retries ({max_retries}) exceeded for HTTP 502 Bad Gateway error at {url}"
-                    )
+                    error_message = f"Maximum retries ({max_retries}) exceeded for HTTP 502 Bad Gateway error at {url}"
+                    logger.error(error_message)
+                    raise RuntimeError(error_message)
 
             # Raise exception if authentication fails (401 Unauthorized)
             if e.code == 401:
@@ -138,11 +136,13 @@ def make_single_api_request(
                     "token is expired" in error_message_lower
                     or "token expired" in error_message_lower
                 ):
-                    logger.error("Bearer token expired")
-                    raise ValueError("Bearer token expired") from e
+                    error_message = "Bearer token expired"
+                    logger.error(error_message)
+                    raise ValueError(error_message) from e
                 else:
-                    logger.error("Invalid bearer token")
-                    raise ValueError("Invalid bearer token") from e
+                    error_message = "Invalid bearer token"
+                    logger.error(error_message)
+                    raise ValueError(error_message) from e
 
             # Parse and return the error response so caller can handle it
             try:
@@ -153,24 +153,20 @@ def make_single_api_request(
             except json.JSONDecodeError as json_err:
                 # If response is not JSON, return a structured error
                 logger.warning(f"Error response is not valid JSON: {json_err}")
-                logger.debug(f"Error body (first 500 chars): {error_body[:500]}")
                 return {"error": error_body, "_http_status_code": e.code}
 
         except urllib.error.URLError as e:
-            logger.error(f"URL Error: {e.reason}")
+            error_message = f"URL Error: {e.reason}"
+            logger.error(error_message)
             logger.error(f"URL: {url}")
-            raise RuntimeError(f"URL Error: {e.reason}") from e
-        except ValueError:
-            # Re-raise ValueError exceptions (from JSON/Unicode decode errors)
-            raise
+            raise RuntimeError(error_message) from e
         except TimeoutError as e:
-            logger.error(f"Request timed out after {config.http_timeout_value} seconds")
+            error_message = f"Request timed out after {config.http_timeout_value} seconds"
+            logger.error(error_message)
             logger.error(f"URL: {url}")
-            raise RuntimeError(f"Request timed out after {config.http_timeout_value} seconds") from e
-        except Exception as e:
-            logger.error(f"Unexpected error: {type(e).__name__}: {e}")
-            logger.error(f"URL: {url}")
-            raise RuntimeError(f"Unexpected error: {type(e).__name__}: {e}") from e
+            raise RuntimeError(error_message) from e
 
     # This should never be reached due to the exception handling above
-    raise RuntimeError(f"Unexpected exit from retry loop for {url}")
+    error_message = f"Unexpected exit from retry loop for {url}"
+    logger.error(error_message)
+    raise RuntimeError(error_message)

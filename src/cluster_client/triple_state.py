@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-"""
-Get state script that determines the current state of the peer/HSA cluster.
-This script performs the same verification as repave.py prior to step 1,
-then determines and prints the current state (0-4).
-"""
-
 import logging
 import time
 
@@ -18,7 +11,23 @@ logger = logging.getLogger(__name__)
 
 def get_triple_state(peer: Node, hsa: Node, spare: Node) -> int:
     """
-    Determine the current state.
+    Determine the current state of a three-node cluster.
+
+    Args:
+        peer: The peer node
+        hsa: The HSA (High-availability Secondary Appliance) node
+        spare: The spare node
+
+    Returns:
+        int: Current state number (0-8)
+            0: Invalid/unknown state
+            2: Peer is primary with HSA as secondary, Spare is standalone
+            3: Peer is secondary with HSA as primary, Spare is standalone
+            4: HSA is primary with Peer as secondary, Spare is standalone
+            5: All nodes are standalone (127.0.0.1)
+            6: HSA is primary with Spare as secondary, Peer is standalone
+            7: HSA is secondary with Spare as primary, Peer is standalone
+            8: Spare is primary with HSA as secondary, Peer is standalone
     """
     logger.debug(f"get_triple_state {peer} {hsa} {spare}")
     # Get status for each node
@@ -176,8 +185,14 @@ def verify_triple_state(state: int, peer: Node, hsa: Node, spare: Node) -> bool:
     """
     Verify that the system is in the specified state.
 
+    Args:
+        state: Expected state number (0-8)
+        peer: The peer node
+        hsa: The HSA node
+        spare: The spare node
+
     Returns:
-        True if system is in the specified state, False otherwise
+        bool: True if system is in the specified state, False otherwise
     """
     current_state = get_triple_state(peer=peer, hsa=hsa, spare=spare)
     return current_state == state
@@ -190,15 +205,16 @@ def _wait_for_triple_state_condition(
     Helper function to wait for a state condition to be met.
 
     Args:
-        peer: Peer node
-        hsa: HSA node
-        spare: Spare node
+        peer: The peer node
+        hsa: The HSA node
+        spare: The spare node
         condition_check: Callable that takes current_state and returns (bool, should_return_state)
                         Returns (True, state) if condition met, (False, None) otherwise
         condition_description: Description of the condition being waited for (for logging)
 
     Returns:
-        The state when condition is met (if condition_check returns a state)
+        int | None: The state when condition is met (if condition_check returns a state),
+                    or None if condition doesn't require returning a state
 
     Raises:
         RuntimeError: If condition is not met after maximum retries
@@ -244,7 +260,18 @@ def _wait_for_triple_state_condition(
 def wait_triple_state(state: int, peer: Node, hsa: Node, spare: Node) -> None:
     """
     Wait for the system to reach the specified state.
-    Calls verify_triple_state() repeatedly until the desired state is reached.
+
+    Repeatedly checks the current state with configurable delays and retries
+    until the desired state is reached.
+
+    Args:
+        state: Target state number (0-8)
+        peer: The peer node
+        hsa: The HSA node
+        spare: The spare node
+
+    Raises:
+        RuntimeError: If the desired state is not reached after maximum retries
     """
 
     def check_state(current_state):
@@ -264,15 +291,17 @@ def wait_triple_state(state: int, peer: Node, hsa: Node, spare: Node) -> None:
 def wait_valid_triple_state(peer: Node, hsa: Node, spare: Node) -> int:
     """
     Wait for the system to reach a valid (non-zero) state.
-    Retries up to 10 times with 30 second waits between attempts.
+
+    Repeatedly checks the current state with configurable delays and retries
+    until any valid state (2-8) is reached.
 
     Args:
-        peer: Peer node
-        hsa: HSA node
-        spare: Spare node
+        peer: The peer node
+        hsa: The HSA node
+        spare: The spare node
 
     Returns:
-        The valid state number (1-8) when reached
+        int: The valid state number (2-8) when reached
 
     Raises:
         RuntimeError: If a valid state is not reached after maximum retries

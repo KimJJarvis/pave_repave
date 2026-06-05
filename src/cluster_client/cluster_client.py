@@ -1,10 +1,5 @@
-#!/usr/bin/env python3
-"""
-Script to query peer information, get tokens, or perform fail-over from NMS API.
-Supports multiple commands: peer_info, get_integration_token, and fail_over.
-"""
-
 import argparse
+import json
 import logging
 import os
 import sys
@@ -18,7 +13,6 @@ from cluster_client.double_state import (
     postcondition_double,
 )
 from cluster_client.fail_over import fail_over
-from cluster_client.get_authentication_token import get_authentication_token
 from cluster_client.get_integration_token import get_integration_token
 from cluster_client.join_cluster import join_cluster
 from cluster_client.leave_cluster import leave_cluster
@@ -200,11 +194,7 @@ def main():
     switch_primary_secondary_parser.add_argument(
         "--port_peer", type=int, required=True, help="Port number of the peer"
     )
-    switch_primary_secondary_parser.add_argument(
-        "--id", type=int, required=True, help="ID of the peer in the peers table"
-    )
 
-    # become_hsa subcommand
     # join_cluster subcommand
     join_cluster_parser = subparsers.add_parser(
         "join_cluster",
@@ -265,6 +255,11 @@ def main():
         required=True,
         help="Port number of the peer node to remove from the cluster",
     )
+    leave_cluster_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force the removal of the peer node",
+    )
 
     # become_hsa subcommand
     become_hsa_parser = subparsers.add_parser(
@@ -306,8 +301,13 @@ def main():
         required=True,
         help="Port number of the HSA to be removed",
     )
+    leave_cluster_hsa_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force the removal of the HSA",
+    )
 
-    # state1 subcommand
+
     # single_state subcommand
     single_state_parser = subparsers.add_parser(
         "single_state",
@@ -321,7 +321,6 @@ def main():
         "--port", type=int, required=True, help="Port number for node"
     )
 
-    # state2 subcommand
     # double_state subcommand
     double_state_parser = subparsers.add_parser(
         "double_state",
@@ -341,7 +340,6 @@ def main():
         "--port_hsa", type=int, required=True, help="Port number for HSA node"
     )
 
-    # state3 subcommand
     # triple_state subcommand
     triple_state_parser = subparsers.add_parser(
         "triple_state",
@@ -391,6 +389,11 @@ def main():
     repaveswitch_parser.add_argument(
         "--port_spare", type=int, required=True, help="Port number for spare node"
     )
+    repaveswitch_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force the leave cluster operations",
+    )
 
     # repave subcommand
     repave_parser = subparsers.add_parser(
@@ -415,6 +418,11 @@ def main():
     )
     repave_parser.add_argument(
         "--port_spare", type=int, required=True, help="Port number for spare node"
+    )
+    repave_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force the leave cluster operations",
     )
 
     # show_config subcommand
@@ -482,6 +490,19 @@ def main():
     # ⚠️ Must be called before any other logging calls
     setup_logging(config.log_level, config.log_file)
 
+    logger.info(f"Cluster client started")
+
+    # Log configuration options
+    logger.info(f"Configuration: {json.dumps(config_overrides, indent=2)}")
+
+    # Log the command and parameters
+    command_params = vars(args).copy()
+    # Remove sensitive information from logging
+    if 'password' in command_params:
+        command_params['password'] = '***REDACTED***'
+    logger.info(f"Command: {args.command}")
+    logger.info(f"Parameters: {json.dumps(command_params, indent=2)}")
+    
     unique_ip_args = [
         ip
         for ip in (
@@ -509,82 +530,21 @@ def main():
 
     try:
         if args.command == "peer_table":
-            # Get authentication token
-            token = get_authentication_token(
-                username=username, password=password, ip=args.ip, port=args.port
-            )
-
-            # Create Node object
-            node = Node(port=args.port, token=token, ip=args.ip)
-
-            # Display peer table
+            node = Node(port=args.port, ip=args.ip, username=username, password=password)
             peer_table(peer=node)
-
         elif args.command == "get_integration_token":
-            # Get authentication token
-            token = get_authentication_token(
-                username=username, password=password, ip=args.ip, port=args.port
-            )
-
-            # Create Node object with IP
-            node = Node(port=args.port, token=token, ip=args.ip)
-
-            # Get integration token
+            node = Node(port=args.port, ip=args.ip, username=username, password=password)
             integration_token = get_integration_token(node=node)
-
-            # Output the integration token to stdout
             print(integration_token)
-
         elif args.command == "fail_over":
-            # Get authentication token using port_peer
-            token = get_authentication_token(
-                username=username,
-                password=password,
-                ip=args.ip_peer,
-                port=args.port_peer,
-            )
-
-            # Create Node object with peer IP and port
-            node = Node(port=args.port_peer, token=token, ip=args.ip_peer)
-
-            # Call fail-over
+            node = Node(port=args.port_peer, ip=args.ip_peer, username=username, password=password)
             fail_over(node=node)
         elif args.command == "switch_primary_secondary":
-            # Get authentication token
-            token = get_authentication_token(
-                username=username,
-                password=password,
-                ip=args.ip_peer,
-                port=args.port_peer,
-            )
-
-            # Create Node object
-            node = Node(port=args.port_peer, token=token, ip=args.ip_peer)
-
-            # Call switch-primary-secondary
-            switch_primary_secondary(node=node, id=args.id)
+            node = Node(port=args.port_peer, ip=args.ip_peer, username=username, password=password)
+            switch_primary_secondary(peer=node)
         elif args.command == "join_cluster":
-            # Get authentication token for cluster node
-            peer_token = get_authentication_token(
-                username=username,
-                password=password,
-                ip=args.ip_peer,
-                port=args.port_peer,
-            )
-            # Create cluster Node object
-            peer = Node(port=args.port_peer, token=peer_token, ip=args.ip_peer)
-            # Get authentication token for spare node
-            spare_token = get_authentication_token(
-                username=username,
-                password=password,
-                ip=args.ip_spare,
-                port=args.port_spare,
-            )
-
-            # Create spare Node object
-            spare = Node(port=args.port_spare, token=spare_token, ip=args.ip_spare)
-
-            # Add spare node as peer to the cluster
+            peer = Node(port=args.port_peer, ip=args.ip_peer, username=username, password=password)
+            spare = Node(port=args.port_spare, ip=args.ip_spare, username=username, password=password)
             precondition_single(state=1, peer=spare)
             join_cluster(
                 peer=peer,
@@ -593,216 +553,69 @@ def main():
             )
             spare.token = peer.token
             postcondition_single(state=2, peer=spare)
-
         elif args.command == "leave_cluster":
-            # Get authentication token for cluster node
-            cluster_token = get_authentication_token(
-                username=username,
-                password=password,
-                ip=args.ip_cluster,
-                port=args.port_cluster,
-            )
-
-            # Create cluster Node object
             cluster_node = Node(
-                port=args.port_cluster, token=cluster_token, ip=args.ip_cluster
+                port=args.port_cluster, ip=args.ip_cluster, username=username, password=password
             )
-
-            # Get authentication token for peer node
-            peer_token = get_authentication_token(
-                username=username,
-                password=password,
-                ip=args.ip_peer,
-                port=args.port_peer,
-            )
-
-            # Create peer Node object
-            peer = Node(port=args.port_peer, token=peer_token, ip=args.ip_peer)
-
+            peer = Node(port=args.port_peer, ip=args.ip_peer, username=username, password=password)
             precondition_single(state=2, peer=peer)
             leave_cluster(
                 cluster=cluster_node,
                 peer=peer,
+                force=args.force,
             )
             postcondition_single(state=1, peer=peer)
         elif args.command == "become_hsa":
-            # Get authentication token for peer node
-            peer_token = get_authentication_token(
-                username=username,
-                password=password,
-                ip=args.ip_peer,
-                port=args.port_peer,
-            )
-
-            # Get authentication token for spare node
-            spare_token = get_authentication_token(
-                username=username,
-                password=password,
-                ip=args.ip_spare,
-                port=args.port_spare,
-            )
-
-            # Create Node objects
-            peer = Node(port=args.port_peer, token=peer_token, ip=args.ip_peer)
-            spare = Node(port=args.port_spare, token=spare_token, ip=args.ip_spare)
-
+            peer = Node(port=args.port_peer, ip=args.ip_peer, username=username, password=password)
+            spare = Node(port=args.port_spare, ip=args.ip_spare, username=username, password=password)
             peer_state = get_single_state(peer=peer)
             if peer_state not in [1, 2]:
                 raise RuntimeError("Peer node already has a HSA)")
             precondition_single(state=1, peer=spare)
-            become_hsa(node=spare, peer=peer)
+            become_hsa(spare=spare, peer=peer)
             spare.token=peer.token
             postcondition_double(state=2, peer=peer, hsa=spare)
         elif args.command == "leave_cluster_hsa":
-            # Get authentication token for peer node
-            peer_token = get_authentication_token(
-                username=username,
-                password=password,
-                ip=args.ip_peer,
-                port=args.port_peer,
-            )
-
-            # Get authentication token for HSA node
-            hsa_token = get_authentication_token(
-                username=username, password=password, ip=args.ip_hsa, port=args.port_hsa
-            )
-
-            # Create Node objects
-            peer = Node(port=args.port_peer, token=peer_token, ip=args.ip_peer)
-            hsa = Node(port=args.port_hsa, token=hsa_token, ip=args.ip_hsa)
-
-            # Call leave_cluster_hsa
+            peer = Node(port=args.port_peer, ip=args.ip_peer, username=username, password=password)
+            hsa = Node(port=args.port_hsa, ip=args.ip_hsa, username=username, password=password)
             postcondition_double(state=2, peer=peer, hsa=hsa)
-            leave_cluster_hsa(node=hsa, peer=peer)
+            leave_cluster_hsa(hsa=hsa, peer=peer, force=args.force)
             postcondition_single(state=1, peer=hsa)
             postcondition_single(state=2, peer=peer)
         elif args.command == "double_state":
-            # Get authentication tokens for each node
-            token_peer = get_authentication_token(
-                username=username,
-                password=password,
-                ip=args.ip_peer,
-                port=args.port_peer,
-            )
-            token_hsa = get_authentication_token(
-                username=username, password=password, ip=args.ip_hsa, port=args.port_hsa
-            )
-
-            # Construct Node objects
-            peer = Node(port=args.port_peer, token=token_peer, ip=args.ip_peer)
-            hsa = Node(port=args.port_hsa, token=token_hsa, ip=args.ip_hsa)
-
-            # Determine the current state first
+            peer = Node(port=args.port_peer, ip=args.ip_peer, username=username, password=password)
+            hsa = Node(port=args.port_hsa, ip=args.ip_hsa, username=username, password=password)
             current_state = get_double_state(peer=peer, hsa=hsa)
-
-            # Print the state table
             print()
             print(double_state_table(peer=peer, hsa=hsa))
             print()
-
-            # Print state to console (stdout)
             print(f"State: {current_state}")
-
         elif args.command == "single_state":
-            token = get_authentication_token(
-                username=username, password=password, ip=args.ip, port=args.port
-            )
-            node = Node(port=args.port, token=token, ip=args.ip)
-            # Determine the current state first
+            node = Node(port=args.port, ip=args.ip, username=username, password=password)
             current_state = get_single_state(peer=node)
-
-            # Print the state table with state information
             print()
             print(single_state_table(peer=node))
             print()
-
-            # Print state to console (stdout)
             print(f"State: {current_state}")
-
         elif args.command == "triple_state":
-            # Get authentication tokens for each node
-            token_peer = get_authentication_token(
-                username=username,
-                password=password,
-                ip=args.ip_peer,
-                port=args.port_peer,
-            )
-            token_hsa = get_authentication_token(
-                username=username, password=password, ip=args.ip_hsa, port=args.port_hsa
-            )
-            token_spare = get_authentication_token(
-                username=username,
-                password=password,
-                ip=args.ip_spare,
-                port=args.port_spare,
-            )
-
-            # Construct Node objects
-            peer = Node(port=args.port_peer, token=token_peer, ip=args.ip_peer)
-            hsa = Node(port=args.port_hsa, token=token_hsa, ip=args.ip_hsa)
-            spare = Node(port=args.port_spare, token=token_spare, ip=args.ip_spare)
-
-            # Determine the current state first
+            peer = Node(port=args.port_peer, ip=args.ip_peer, username=username, password=password)
+            hsa = Node(port=args.port_hsa, ip=args.ip_hsa, username=username, password=password)
+            spare = Node(port=args.port_spare, ip=args.ip_spare, username=username, password=password)
             current_state = get_triple_state(peer=peer, hsa=hsa, spare=spare)
-
-            # Print the state table with state information
             print()
             print(triple_state_table(peer=peer, hsa=hsa, spare=spare))
             print()
-
-            # Print state to console (stdout)
             print(f"State: {current_state}")
-
         elif args.command == "repaveswitch":
-            # Get authentication tokens for each node
-            token_peer = get_authentication_token(
-                username=username,
-                password=password,
-                ip=args.ip_peer,
-                port=args.port_peer,
-            )
-            token_hsa = get_authentication_token(
-                username=username, password=password, ip=args.ip_hsa, port=args.port_hsa
-            )
-            token_spare = get_authentication_token(
-                username=username,
-                password=password,
-                ip=args.ip_spare,
-                port=args.port_spare,
-            )
-
-            # Construct Node objects
-            peer = Node(port=args.port_peer, token=token_peer, ip=args.ip_peer)
-            hsa = Node(port=args.port_hsa, token=token_hsa, ip=args.ip_hsa)
-            spare = Node(port=args.port_spare, token=token_spare, ip=args.ip_spare)
-
-            # Call paverepave
-            repaveswitch(peer=peer, hsa=hsa, spare=spare)
+            peer = Node(port=args.port_peer, ip=args.ip_peer, username=username, password=password)
+            hsa = Node(port=args.port_hsa, ip=args.ip_hsa, username=username, password=password)
+            spare = Node(port=args.port_spare, ip=args.ip_spare, username=username, password=password)
+            repaveswitch(peer=peer, hsa=hsa, spare=spare, force=args.force)
         elif args.command == "repave":
-            # Get authentication tokens for each node
-            token_peer = get_authentication_token(
-                username=username,
-                password=password,
-                ip=args.ip_peer,
-                port=args.port_peer,
-            )
-            token_hsa = get_authentication_token(
-                username=username, password=password, ip=args.ip_hsa, port=args.port_hsa
-            )
-            token_spare = get_authentication_token(
-                username=username,
-                password=password,
-                ip=args.ip_spare,
-                port=args.port_spare,
-            )
-
-            # Construct Node objects
-            peer = Node(port=args.port_peer, token=token_peer, ip=args.ip_peer)
-            hsa = Node(port=args.port_hsa, token=token_hsa, ip=args.ip_hsa)
-            spare = Node(port=args.port_spare, token=token_spare, ip=args.ip_spare)
-
-            # Call repave
-            repave(peer=peer, hsa=hsa, spare=spare)
+            peer = Node(port=args.port_peer, ip=args.ip_peer, username=username, password=password)
+            hsa = Node(port=args.port_hsa, ip=args.ip_hsa, username=username, password=password)
+            spare = Node(port=args.port_spare, ip=args.ip_spare, username=username, password=password)
+            repave(peer=peer, hsa=hsa, spare=spare, force=args.force)
         else:
             logger.error(f"Unknown command: {args.command}")
         print("✓ Operation completed successfully!")
@@ -823,5 +636,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# Made with Bob

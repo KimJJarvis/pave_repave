@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-"""
-Get state script that determines the current state of the peer/HSA cluster.
-This script performs the same verification as repave.py prior to step 1,
-then determines and prints the current state (0-4).
-"""
-
 import logging
 import time
 
@@ -18,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 def get_double_state(peer: Node, hsa: Node) -> int:
     """
-    Determine the current state.
+    Determine the current state of two nodes.
     """
     logger.debug(f"get_double_state {peer} {hsa}")
     # Get status for each node
@@ -92,8 +85,13 @@ def verify_double_state(state: int, peer: Node, hsa: Node) -> bool:
     """
     Verify that the system is in the specified state.
 
+    Args:
+        state: Expected state number (0-4)
+        peer: The peer node
+        hsa: The HSA node
+
     Returns:
-        True if system is in the specified state, False otherwise
+        bool: True if system is in the specified state, False otherwise
     """
     current_state = get_double_state(peer=peer, hsa=hsa)
     return current_state == state
@@ -106,14 +104,15 @@ def _wait_for_double_state_condition(
     Helper function to wait for a state condition to be met.
 
     Args:
-        peer: Peer node
-        spare: Spare node
+        peer: The peer node
+        hsa: The HSA node
         condition_check: Callable that takes current_state and returns (bool, should_return_state)
                         Returns (True, state) if condition met, (False, None) otherwise
         condition_description: Description of the condition being waited for (for logging)
 
     Returns:
-        The state when condition is met (if condition_check returns a state)
+        int | None: The state when condition is met (if condition_check returns a state),
+                    or None if condition doesn't require returning a state
 
     Raises:
         RuntimeError: If condition is not met after maximum retries
@@ -159,7 +158,17 @@ def _wait_for_double_state_condition(
 def wait_double_state(state: int, peer: Node, hsa: Node) -> None:
     """
     Wait for the system to reach the specified state.
-    Calls verify_double_state() repeatedly until the desired state is reached.
+
+    Repeatedly checks the current state with configurable delays and retries
+    until the desired state is reached.
+
+    Args:
+        state: Target state number (0-4)
+        peer: The peer node
+        hsa: The HSA node
+
+    Raises:
+        RuntimeError: If the desired state is not reached after maximum retries
     """
 
     def check_state(current_state):
@@ -178,14 +187,16 @@ def wait_double_state(state: int, peer: Node, hsa: Node) -> None:
 def wait_valid_double_state(peer: Node, hsa: Node) -> int:
     """
     Wait for the system to reach a valid (non-zero) state.
-    Retries up to 10 times with 30 second waits between attempts.
+
+    Repeatedly checks the current state with configurable delays and retries
+    until any valid state (1-4) is reached.
 
     Args:
-        peer: Peer node
-        hsa: HSA node
+        peer: The peer node
+        hsa: The HSA node
 
     Returns:
-        The valid state number (1-8) when reached
+        int: The valid state number (1-4) when reached
 
     Raises:
         RuntimeError: If a valid state is not reached after maximum retries

@@ -1,8 +1,3 @@
-#!/usr/bin/env python3
-"""
-Status model for representing peer information status.
-"""
-
 from typing import Self
 
 from pydantic import BaseModel, model_validator

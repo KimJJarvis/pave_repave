@@ -17,7 +17,13 @@ logger = logging.getLogger(__name__)
 
 def join_cluster(peer: Node, spare: Node, name: str) -> None:
     """
-    Add a peer to an existing cluster by getting integration token from a cluster node and calling join-cluster endpoint.
+    Add a peer to an existing cluster by joining it through the NMS API.
+
+    This function retrieves an integration token from an existing cluster node,
+    then calls the join-cluster endpoint on the spare node to add it to the cluster.
+
+    API Endpoint:
+        POST /api/v3/cluster-orchestrator/join-cluster
 
     Args:
         peer: Node object for an existing peer (must be in cluster)
@@ -27,13 +33,8 @@ def join_cluster(peer: Node, spare: Node, name: str) -> None:
     Raises:
         RuntimeError: If any API call fails or validation checks fail
     """
-    # Log parameters
-    logger.debug(f"join_cluster called with peer: {peer}, spare: {spare}, name: {name}")
 
-    # Get integration token from peer
-    logger.debug("Getting integration token")
     integration_token = get_integration_token(node=peer)
-    logger.debug(f"✓ Integration token obtained (length: {len(integration_token)})")
 
     host = config.host if config.port_forward else spare.ip
     base_url = f"https://{host}:{spare.port}"
@@ -45,37 +46,28 @@ def join_cluster(peer: Node, spare: Node, name: str) -> None:
         "newNodeName": name,
         "token": integration_token,
     }
-    logger.debug(f"join_cluster data: {json.dumps(data, indent=2)}")
 
     response = make_single_api_request(
         url=url, bearer_token=spare.token, method="POST", data=data
     )
 
-    # Log response object
-    logger.debug(f"join_cluster response: {json.dumps(response, indent=2)}")
-
     # Check for HTTP status code (default to 200 if not present)
     http_status = response.get("_http_status_code", 200)
 
     if http_status == 400:
-        error_msg = response.get("error", "Unknown error")
-        logger.error(f"HTTP 400 Bad Request: {error_msg}")
-        raise RuntimeError(f"join_cluster returned HTTP 400: {response}")
+        error_message = f"join_cluster returned HTTP 400: {response}"
+        logger.error(error_message)
+        raise RuntimeError(error_message)
 
     if http_status != 200:
-        error_msg = response.get("error", "Unknown error")
-        logger.error(f"HTTP {http_status} Error: {error_msg}")
-        raise RuntimeError(
-            f"join_cluster returned unexpected HTTP status {http_status}: {response}"
-        )
+        error_message = f"join_cluster returned unexpected HTTP status {http_status}: {response}"
+        logger.error(error_message)
+        raise RuntimeError(error_message)
 
     # Check for success message
     status_msg = response.get("status", "")
-    logger.debug(f"join_cluster response: {status_msg}")
     if "Peer Add successfully initiated" not in status_msg:
-        logger.error(f"Unexpected response status: {status_msg}")
-        raise RuntimeError(
-            f"join_cluster did not return expected success message. Got: {status_msg}"
-        )
+        error_message = f"join_cluster did not return expected success message. Got: {status_msg}"
+        logger.error(error_message)
+        raise RuntimeError(error_message)
 
-    logger.debug(f"✓ join- started: {status_msg}")

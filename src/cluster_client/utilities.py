@@ -13,23 +13,37 @@ logger = logging.getLogger(__name__)
 def setup_logging(level: str, log_file: str | None = None) -> None:
     """
     Configure logging for the application.
-    Logs to both console and file (if file is specified) using multiple handlers.
+    Logs to console with the configured level and to file with INFO level.
 
     Args:
-        level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-        log_file: Optional file path to log to (in addition to console)
+        level: Logging level for console output (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        log_file: Optional file path to log to (always logs at INFO level)
     """
     numeric_level = getattr(logging, level.upper(), logging.INFO)
-
-    # Setup handlers: always log to console, optionally log to file
-    handlers: list[logging.Handler] = [
-        logging.StreamHandler(),  # console
-    ]
+    
+    # Create formatter
+    formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    
+    # Setup console handler with configured level
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(numeric_level)
+    console_handler.setFormatter(formatter)
+    
+    handlers: list[logging.Handler] = [console_handler]
+    
+    # Setup file handler with INFO level if log_file is specified
     if log_file:
-        handlers.append(logging.FileHandler(log_file))  # file
-
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setLevel(logging.INFO)
+        file_handler.setFormatter(formatter)
+        handlers.append(file_handler)
+    
+    # Configure root logger with the lowest level needed
+    # (handlers will filter based on their own levels)
+    root_level = min(numeric_level, logging.INFO) if log_file else numeric_level
+    
     logging.basicConfig(
-        level=numeric_level,
+        level=root_level,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         handlers=handlers,
     )
